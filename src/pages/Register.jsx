@@ -6,11 +6,12 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    firstName: "",
+    fullName: "",
     username: "",
     email: "",
     phone: "",
     password: "",
+    location: "", // New Field
     role: "",
   });
 
@@ -20,51 +21,61 @@ const Register = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const { firstName, username, email, phone, password, role } = formData;
+    const { firstName, username, email, phone, password, location, role } = formData;
 
+    // --- Validation Patterns ---
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phonePattern = /^[0-9]{10}$/;
     const usernamePattern = /^[a-zA-Z0-9_]{3,15}$/;
-    const passwordPattern =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-    if (!firstName || !username || !email || !phone || !password || !role) {
-      alert("All fields are required!");
+    // 1. Mandatory Fields Check
+    if (!firstName || !username || !email || !phone || !password || !location || !role) {
+      alert("Error: All fields are mandatory! Please fill in every field.");
       return;
     }
 
+    // 2. Username Validation
     if (!usernamePattern.test(username)) {
-      alert(
-        "Username must be 3-15 characters and contain only letters, numbers, or underscore."
-      );
+      alert("Invalid Username: Must be 3-15 characters (letters, numbers, or underscores only).");
       return;
     }
-
     if (username.startsWith("_") || username.endsWith("_")) {
-      alert("Username cannot start or end with underscore.");
+      alert("Invalid Username: Cannot start or end with an underscore.");
       return;
     }
 
+    // 3. Email Validation
     if (!emailPattern.test(email)) {
-      alert("Please enter a valid email!");
+      alert("Invalid Email: Please enter a valid email address (e.g., name@example.com).");
       return;
     }
 
+    // 4. Phone Validation
     if (!phonePattern.test(phone)) {
-      alert("Phone number must be exactly 10 digits!");
+      alert("Invalid Phone: Must be exactly 10 digits.");
       return;
     }
 
+    // 5. Password Validation
     if (!passwordPattern.test(password)) {
-      alert(
-        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character!"
-      );
+      alert("Weak Password: Must be 8+ characters with at least one uppercase letter, one lowercase letter, one number, and one special character.");
       return;
     }
 
-    console.log("Form submitted successfully:", formData);
+    // 6. Location Validation (Simple length check)
+    if (location.trim().length < 3) {
+      alert("Invalid Location: Please enter a valid city or area name.");
+      return;
+    }
 
+    // --- Success Action ---
+    // If code reaches here, all validations passed
+    alert(`Success! Registration for ${username} was successful.`);
+    console.log("Form Data Submitted:", formData);
     
+    // Redirect to login after successful registration
+    navigate("/LoginCard");
   };
 
   return (
@@ -73,7 +84,6 @@ const Register = () => {
         <h2 className="text-2xl font-bold text-center mb-2 text-black">
           Register for CleanStreet
         </h2>
-
         <p className="text-black text-center mb-6">
           Create your account to get started!
         </p>
@@ -81,51 +91,62 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
-            name="firstName"
-            placeholder="Enter your first name"
+            name="fullstName"
+            placeholder="Full Name *"
             value={formData.firstName}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 
           <input
             type="text"
             name="username"
-            placeholder="Enter your username"
+            placeholder="Username *"
             value={formData.username}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 
           <input
             type="email"
             name="email"
-            placeholder="Enter your email"
+            placeholder="Email Address *"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 
           <input
             type="tel"
             name="phone"
-            placeholder="Enter your phone number"
+            placeholder="Phone Number (10 digits) *"
             value={formData.phone}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            required
+          />
+
+          {/* New Location Field */}
+          <input
+            type="text"
+            name="location"
+            placeholder="Your City / Location *"
+            value={formData.location}
+            onChange={handleChange}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 
           <input
             type="password"
             name="password"
-            placeholder="Create a password"
+            placeholder="Password (Min. 8 chars) *"
             value={formData.password}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
 
@@ -133,25 +154,22 @@ const Register = () => {
             name="role"
             value={formData.role}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-            formData.role === "" ? "text-gray-500" : "text-black"
-          }`}
-          required
+            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              formData.role === "" ? "text-gray-500" : "text-black"
+            }`}
+            required
           >
-  <option value="" disabled>
-    Choose your role
-  </option>
-  <option value="citizen">Citizen</option>
-  <option value="admin">Volunteer</option>
-  <option value="worker">Admin</option>
-</select>
-
+            <option value="" disabled>Choose your role *</option>
+            <option value="citizen">Citizen</option>
+            <option value="volunteer">Volunteer</option>
+            <option value="admin">Admin</option>
+          </select>
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg text-white font-semibold bg-indigo-600 hover:opacity-90 transition duration-300"
+            className="w-full py-3 rounded-lg text-white font-semibold bg-indigo-600 hover:bg-indigo-700 transition duration-300 shadow-md"
           >
-            Register
+            Register Now
           </button>
         </form>
 
@@ -159,7 +177,7 @@ const Register = () => {
           Already have an account?{" "}
           <span
             onClick={() => navigate("/LoginCard")}
-            className="text-purple-600 font-semibold cursor-pointer hover:underline"
+            className="text-indigo-600 font-semibold cursor-pointer hover:underline"
           >
             Login
           </span>
