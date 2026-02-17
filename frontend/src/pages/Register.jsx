@@ -19,9 +19,41 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+
+  const handleGetLocation = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Option A: Just save the coordinates
+        // setFormData({ ...formData, location: `${latitude}, ${longitude}` });
+
+        // Option B: Get the actual Address (Recommended)
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          setFormData({ ...formData, location: data.display_name });
+        } catch (err) {
+          alert("Could not convert coordinates to an address.");
+        }
+      },
+      (error) => {
+        alert("Please enable location permissions in your browser.");
+      }
+    );
+  } else {
+    alert("Geolocation is not supported by your browser.");
+  }
+};
+
+
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const { firstName, username, email, phone, password, location, role } = formData;
+    const { fullName, username, email, phone, password, location, role } = formData;
 
     // --- Validation Patterns ---
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,7 +62,7 @@ const Register = () => {
     const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
     // 1. Mandatory Fields Check
-    if (!firstName || !username || !email || !phone || !password || !location || !role) {
+    if (!fullName || !username || !email || !phone || !password || !location || !role) {
       alert("Error: All fields are mandatory! Please fill in every field.");
       return;
     }
@@ -91,9 +123,9 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
-            name="fullstName"
+            name="fullName"
             placeholder="Full Name *"
-            value={formData.firstName}
+            value={formData.fullName}
             onChange={handleChange}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
@@ -130,15 +162,23 @@ const Register = () => {
           />
 
           {/* New Location Field */}
-          <input
-            type="text"
-            name="location"
-            placeholder="Your City / Location *"
-            value={formData.location}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="location"
+              placeholder="Location *"
+              value={formData.location}
+              readOnly // Prevents manual typing if you want it fully automated
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-black bg-gray-50"
+            />
+            <button 
+              type="button"
+              onClick={handleGetLocation}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              📍
+            </button>
+          </div>
 
           <input
             type="password"
