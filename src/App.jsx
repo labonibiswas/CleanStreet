@@ -16,7 +16,7 @@ function App() {
     <>
         <Router>
           <Navbar /> 
-            <main className="min-h-screen text-yellow-400">
+            <main className="text-yellow-400">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/Home" element={<Home />} />
