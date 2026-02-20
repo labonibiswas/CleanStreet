@@ -5,6 +5,8 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import LoginCard from "./pages/LoginCard";
 import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+
 
 /*import Dashboard from "./pages/Dashboard";
 import ReportIssue from "./pages/ReportIssue";
@@ -21,6 +23,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/LoginCard" element={<LoginCard />} />
                 <Route path="/Register" element={<Register />} />
+                <Route path="/profile" element={<Profile />} />
                 {/*<Route path="/Dashboard" element={<Dashboard />} />
                 <Route path="/ReportIssue" element={<ReportIssue />} />
                 <Route path="/ViewComplaint" element={<ViewComplaint />} />*/}
