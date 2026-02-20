@@ -4,18 +4,71 @@ import { useNavigate } from "react-router-dom";
 const LoginCard = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
-  const handleSubmit = (e) => {
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+   
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: "" });
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError("");
 
-    if (!email || !password) {
-      alert("Please fill all fields!");
+    const { email, password } = formData;
+
+    let newErrors = {};
+
+    if (!email) newErrors.email = "Email is required.";
+    if (!password) newErrors.password = "Password is required.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    console.log("Login Data:", { email, password });
+    setErrors({});
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      navigate("/profile");
+
+    } catch (error) {
+      setServerError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,40 +83,55 @@ const LoginCard = () => {
           </p>
         </div>
 
+        {serverError && (
+          <div className="bg-red-100 text-red-600 p-2 rounded mb-4 text-sm">
+            {serverError}
+          </div>
+        )}
+
         <form className="space-y-5" onSubmit={handleSubmit}>
+          {/* Email */}
           <div>
             <label className="block text-sm font-semibold text-black mb-2">
               Email
             </label>
             <input
               type="email"
+              name="email"
               placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
+          {/* Password */}
           <div>
             <label className="block text-sm font-semibold text-black mb-2">
               Password
             </label>
             <input
               type="password"
+              name="password"
               placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleChange}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
           </div>
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:opacity-90 transition duration-300"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
