@@ -7,10 +7,11 @@ import { NavLink, Link, useNavigate } from "react-router-dom";
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user"))
-  );
-
+  const [user, setUser] = useState(() => {
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  return token && storedUser ? JSON.parse(storedUser) : null;
+});
   const navigate = useNavigate();
 
   useEffect(() => {
