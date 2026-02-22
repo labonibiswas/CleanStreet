@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -11,87 +11,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-/* ───────────────────────── Static Data ───────────────────────── */
-
-const statsData = [
-  {
-    label: "Total Issues",
-    count: 4,
-    icon: ClipboardList,
-    iconBg: "bg-indigo-100",
-    iconColor: "text-indigo-600",
-  },
-  {
-    label: "Pending",
-    count: 4,
-    icon: AlertCircle,
-    iconBg: "bg-red-100",
-    iconColor: "text-red-500",
-  },
-  {
-    label: "In Progress",
-    count: 4,
-    icon: MessageCircle,
-    iconBg: "bg-yellow-100",
-    iconColor: "text-yellow-500",
-  },
-  {
-    label: "Resolved",
-    count: 4,
-    icon: CheckCircle2,
-    iconBg: "bg-green-100",
-    iconColor: "text-green-500",
-  },
-];
-
-const recentActivity = [
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "Pending",
-  },
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "In Progress",
-  },
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "Resolved",
-  },
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "Pending",
-  },
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "Pending",
-  },
-  {
-    title: "pothole on 5th Ave",
-    time: "Reported 2h ago",
-    location: "Downtown Crossing",
-    priority: 42,
-    status: "In Progress",
-  },
-];
-
-/* Bar heights for the weekly chart (7 days, tallest = full height) */
 const weeklyBars = [60, 80, 50, 95, 70, 85, 45];
-
 /* ───────────────────────── Helper Components ───────────────────────── */
 
 /** Status badge with colour coding */
@@ -114,6 +34,60 @@ const StatusBadge = ({ status }) => {
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState(null);
+  const [recent, setRecent] = useState([]);
+
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  
+
+  fetch("http://localhost:5000/api/dashboard/stats", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => res.json())
+    .then(data => setStats(data))
+    .catch(err => console.log(err));
+
+  fetch("http://localhost:5000/api/dashboard/recent", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => res.json())
+    .then(data => setRecent(data))
+    .catch(err => console.log(err));
+
+}, []);
+
+const statsData = stats ? [
+    {
+      label: "Total Issues",
+      count: stats.total,
+      icon: ClipboardList,
+      iconBg: "bg-indigo-100",
+      iconColor: "text-indigo-600",
+    },
+    {
+      label: "Pending",
+      count: stats.pending,
+      icon: AlertCircle,
+      iconBg: "bg-red-100",
+      iconColor: "text-red-500",
+    },
+    {
+      label: "In Progress",
+      count: stats.inProgress,
+      icon: MessageCircle,
+      iconBg: "bg-yellow-100",
+      iconColor: "text-yellow-500",
+    },
+    {
+      label: "Resolved",
+      count: stats.resolved,
+      icon: CheckCircle2,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-500",
+    },
+  ] : [];
 
   return (
     <section className="min-h-screen bg-gray-50">
@@ -187,7 +161,7 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentActivity.map((item, idx) => (
+                  {recent.map((item, idx) => (
                     <tr
                       key={idx}
                       className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
@@ -221,7 +195,7 @@ const Dashboard = () => {
 
             {/* Mobile Cards */}
             <div className="flex flex-col gap-3 p-4 md:hidden">
-              {recentActivity.map((item, idx) => (
+              {recent.map((item, idx) => (
                 <div
                   key={idx}
                   className="rounded-lg border border-gray-100 bg-gray-50/50 p-4"

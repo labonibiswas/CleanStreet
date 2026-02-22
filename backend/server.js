@@ -13,6 +13,10 @@ app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
 
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
+app.use("/api/dashboard", dashboardRoutes);
+
 app.get("/", (req, res) => {
   res.send("CleanStreet API Running...");
 });
@@ -20,3 +24,4 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
