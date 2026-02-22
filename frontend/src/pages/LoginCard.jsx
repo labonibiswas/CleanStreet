@@ -1,38 +1,74 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API from '../api/axios'; 
 
 const LoginCard = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  // This is the SINGLE correct handleSubmit function
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+   
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: "" });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError("");
 
-    if (!email || !password) {
-      alert("Please fill all fields!");
+    const { email, password } = formData;
+
+    let newErrors = {};
+
+    if (!email) newErrors.email = "Email is required.";
+    if (!password) newErrors.password = "Password is required.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
+    setErrors({});
+    setLoading(true);
+
     try {
-      // Sending data to the backend
-      const response = await API.post('/auth/login', { email, password });
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
-      console.log("Login Success:", response.data);
-      alert("Login Successful!");
+      const data = await response.json();
 
-      // Save the token so the website remembers you
-      localStorage.setItem('token', response.data.token);
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
 
-      // Go to home page
-      navigate("/"); 
+      
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("storage"));
+      navigate("/profile");
 
     } catch (error) {
-      // If backend fails (wrong password, user not found, etc.)
-      console.error("Login Error:", error);
-      alert(error.response?.data?.message || "Invalid Email or Password");
+      setServerError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -40,40 +76,63 @@ const LoginCard = () => {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-16">
       <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl">
         <div className="text-center mb-7">
-          <h1 className="text-2xl font-bold text-black">Login to CleanStreet</h1>
-          <p className="text-black text-sm mt-2">Login to your account to get started!</p>
+          <h1 className="text-2xl font-bold text-black">
+            Login to CleanStreet
+          </h1>
+          <p className="text-black text-sm mt-2">
+            Login to your account to get started!
+          </p>
         </div>
 
+        {serverError && (
+          <div className="bg-red-100 text-red-600 p-2 rounded mb-4 text-sm">
+            {serverError}
+          </div>
+        )}
+
         <form className="space-y-5" onSubmit={handleSubmit}>
+          {/* Email */}
           <div>
-            <label className="block text-sm font-semibold text-black mb-2">Email</label>
+            <label className="block text-sm font-semibold text-black mb-2">
+              Email
+            </label>
             <input
               type="email"
+              name="email"
               placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block text-sm font-semibold text-black mb-2">Password</label>
+            <label className="block text-sm font-semibold text-black mb-2">
+              Password
+            </label>
             <input
               type="password"
+              name="password"
               placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleChange}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
           </div>
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:opacity-90 transition duration-300"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
