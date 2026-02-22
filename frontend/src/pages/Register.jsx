@@ -23,7 +23,7 @@ const Register = () => {
     email: "",
     phone: "",
     password: "",
-    location: "", // New Field
+    location: "", 
     role: "",
   });
 
@@ -34,24 +34,47 @@ const Register = () => {
 
   const handleGetLocation = () => {
   if (navigator.geolocation) {
+    // Optional: Add a 'loading' state here if you have one
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
-        // Update the form data with the actual numeric coordinates
-        // This ensures the backend User.create() doesn't fail
-        setFormData({ 
-          ...formData, 
-          latitude: latitude, 
-          longitude: longitude,
-          location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` // For the input box
-        });
+
+        try {
+          // 1. Fetch the human-readable address from a free API
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          
+          // Nominatim returns a full address in 'display_name'
+          // You can also use data.address.city or data.address.road for shorter text
+          const address = data.display_name || "Location found";
+
+          // 2. Update state: Lat/Lon for Backend, Address for Frontend
+          setFormData((prev) => ({
+            ...prev,
+            latitude: latitude,   // Sent to DB
+            longitude: longitude, // Sent to DB
+            location: address     // Displayed in the <input />
+          }));
+          
+        } catch (error) {
+          console.error("Geocoding failed:", error);
+          // Fallback if the API fails: just show coordinates
+          setFormData((prev) => ({
+            ...prev,
+            latitude,
+            longitude,
+            location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+          }));
+        }
       },
       (error) => alert("Please enable location permissions.")
     );
+  } else {
+    alert("Geolocation is not supported by your browser.");
   }
 };
-
 
 
   const handleSubmit = async (e) => {
