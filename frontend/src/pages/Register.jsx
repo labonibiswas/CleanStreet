@@ -1,6 +1,7 @@
 // src/pages/Register.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaMapMarkerAlt } from "react-icons/fa";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -11,125 +12,163 @@ const Register = () => {
     email: "",
     phone: "",
     password: "",
-    location: "", // New Field
     role: "",
+    location: null, 
   });
+
+  const [locationCaptured, setLocationCaptured] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: "" });
+    }
   };
 
-
+  
   const handleGetLocation = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        // Option A: Just save the coordinates
-        // setFormData({ ...formData, location: `${latitude}, ${longitude}` });
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
 
-        // Option B: Get the actual Address (Recommended)
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          setFormData({ ...formData, location: data.display_name });
-        } catch (err) {
-          alert("Could not convert coordinates to an address.");
-        }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        setFormData((prev) => ({
+          ...prev,
+          location: {
+            type: "Point",
+            coordinates: [longitude, latitude], 
+          },
+        }));
+
+        setLocationCaptured(true);
       },
-      (error) => {
-        alert("Please enable location permissions in your browser.");
+      () => {
+        alert("Please allow location access.");
       }
     );
-  } else {
-    alert("Geolocation is not supported by your browser.");
-  }
-};
+  };
 
-
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const { fullName, username, email, phone, password, location, role } = formData;
+    setServerError("");
 
-    // --- Validation Patterns ---
+    const { fullName, username, email, phone, password, role, location } =
+      formData;
+
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phonePattern = /^[0-9]{10}$/;
     const usernamePattern = /^[a-zA-Z0-9_]{3,15}$/;
-    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordPattern =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-    // 1. Mandatory Fields Check
-    if (!fullName || !username || !email || !phone || !password || !location || !role) {
-      alert("Error: All fields are mandatory! Please fill in every field.");
+    let newErrors = {};
+
+    if (!fullName) newErrors.fullName = "Full name is required.";
+    if (!username) newErrors.username = "Username is required.";
+    else if (!usernamePattern.test(username))
+      newErrors.username =
+        "3-15 characters (letters, numbers, underscores only).";
+
+    if (!email) newErrors.email = "Email is required.";
+    else if (!emailPattern.test(email))
+      newErrors.email = "Enter valid email.";
+
+    if (!phone) newErrors.phone = "Phone required.";
+    else if (!phonePattern.test(phone))
+      newErrors.phone = "Must be 10 digits.";
+
+    if (!password) newErrors.password = "Password required.";
+    else if (!passwordPattern.test(password))
+      newErrors.password =
+        "8+ chars, uppercase, lowercase, number & special char.";
+
+    if (!role) newErrors.role = "Select role.";
+    if (!location) newErrors.location = "Please capture your location.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    // 2. Username Validation
-    if (!usernamePattern.test(username)) {
-      alert("Invalid Username: Must be 3-15 characters (letters, numbers, or underscores only).");
-      return;
-    }
-    if (username.startsWith("_") || username.endsWith("_")) {
-      alert("Invalid Username: Cannot start or end with an underscore.");
-      return;
-    }
+    setErrors({});
+    setLoading(true);
 
-    // 3. Email Validation
-    if (!emailPattern.test(email)) {
-      alert("Invalid Email: Please enter a valid email address (e.g., name@example.com).");
-      return;
-    }
+    try {
+      const response = await fetch(
+  "http://localhost:5000/api/auth/register",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formData),
+  }
+);
 
-    // 4. Phone Validation
-    if (!phonePattern.test(phone)) {
-      alert("Invalid Phone: Must be exactly 10 digits.");
-      return;
-    }
+let data;
 
-    // 5. Password Validation
-    if (!passwordPattern.test(password)) {
-      alert("Weak Password: Must be 8+ characters with at least one uppercase letter, one lowercase letter, one number, and one special character.");
-      return;
-    }
+try {
+  data = await response.json();
+} catch (err) {
+  throw new Error("Server error — not valid JSON response");
+}
 
-    // 6. Location Validation (Simple length check)
-    if (location.trim().length < 3) {
-      alert("Invalid Location: Please enter a valid city or area name.");
-      return;
-    }
+if (!response.ok) {
+  throw new Error(data.message || "Registration failed");
+}
 
-    // --- Success Action ---
-    // If code reaches here, all validations passed
-    alert(`Success! Registration for ${username} was successful.`);
-    console.log("Form Data Submitted:", formData);
-    
-    // Redirect to login after successful registration
-    navigate("/LoginCard");
+      
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      navigate("/LoginCard");
+    } catch (error) {
+      setServerError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-16">
       <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl">
-        <h2 className="text-2xl font-bold text-center mb-2 text-black">
-          Register for CleanStreet
-        </h2>
-        <p className="text-black text-center mb-6">
-          Create your account to get started!
-        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="text-center mb-7">
+          <h1 className="text-2xl font-bold text-black">
+            Register for CleanStreet
+          </h1>
+          <p className="text-black text-sm mt-2">
+            Create your account to get started!
+          </p>
+        </div>
+
+        {serverError && (
+          <div className="bg-red-100 text-red-600 p-2 rounded mb-4 text-sm">
+            {serverError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+
           <input
             type="text"
             name="fullName"
             placeholder="Full Name *"
             value={formData.fullName}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
+          {errors.fullName && (
+            <p className="text-red-500 text-sm">{errors.fullName}</p>
+          )}
 
           <input
             type="text"
@@ -137,79 +176,95 @@ const Register = () => {
             placeholder="Username *"
             value={formData.username}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
+          {errors.username && (
+            <p className="text-red-500 text-sm">{errors.username}</p>
+          )}
 
           <input
             type="email"
             name="email"
-            placeholder="Email Address *"
+            placeholder="Email *"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email}</p>
+          )}
 
           <input
             type="tel"
             name="phone"
-            placeholder="Phone Number (10 digits) *"
+            placeholder="Phone *"
             value={formData.phone}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
+          {errors.phone && (
+            <p className="text-red-500 text-sm">{errors.phone}</p>
+          )}
 
-          {/* New Location Field */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              name="location"
-              placeholder="Location *"
-              value={formData.location}
-              readOnly // Prevents manual typing if you want it fully automated
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-black bg-gray-50"
-            />
-            <button 
-              type="button"
-              onClick={handleGetLocation}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              📍
-            </button>
-          </div>
+          {/* 📍 Location Capture Button */}
+          <div className="flex items-center gap-3">
+  <button
+    type="button"
+    onClick={handleGetLocation}
+    className="flex items-center gap-2 px-5 py-2.5 
+               bg-gradient-to-r from-indigo-500 to-purple-600 
+               text-white font-medium rounded-full 
+               shadow-md hover:shadow-lg 
+               hover:scale-105 transition-all duration-300"
+  >
+    <FaMapMarkerAlt className="text-white text-lg" />
+    Capture Location
+  </button>
+
+  {locationCaptured && (
+    <span className="text-green-600 text-sm font-semibold animate-pulse">
+      Location captured ✅
+    </span>
+  )}
+</div>
+
+          {errors.location && (
+            <p className="text-red-500 text-sm">{errors.location}</p>
+          )}
 
           <input
             type="password"
             name="password"
-            placeholder="Password (Min. 8 chars) *"
+            placeholder="Password *"
             value={formData.password}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
+          {errors.password && (
+            <p className="text-red-500 text-sm">{errors.password}</p>
+          )}
 
           <select
             name="role"
             value={formData.role}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              formData.role === "" ? "text-gray-500" : "text-black"
-            }`}
-            required
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           >
-            <option value="" disabled>Choose your role *</option>
+            <option value="">Choose your role *</option>
             <option value="citizen">Citizen</option>
             <option value="volunteer">Volunteer</option>
             <option value="admin">Admin</option>
           </select>
+          {errors.role && (
+            <p className="text-red-500 text-sm">{errors.role}</p>
+          )}
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg text-white font-semibold bg-indigo-600 hover:bg-indigo-700 transition duration-300 shadow-md"
+            disabled={loading}
+            className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold"
           >
-            Register Now
+            {loading ? "Registering..." : "Register Now"}
           </button>
         </form>
 
@@ -217,7 +272,7 @@ const Register = () => {
           Already have an account?{" "}
           <span
             onClick={() => navigate("/LoginCard")}
-            className="text-indigo-600 font-semibold cursor-pointer hover:underline"
+            className="text-purple-600 font-semibold cursor-pointer hover:underline"
           >
             Login
           </span>

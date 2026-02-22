@@ -1,13 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaRoad } from "react-icons/fa6";
 import { HiMenu, HiX } from "react-icons/hi";
-import { Link, useLocation } from "react-router-dom";
+import { FiLogOut, FiUser } from "react-icons/fi";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user"))
+  );
 
-  const toggleMenu = () => setIsOpen(!isOpen);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const syncUser = () => {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      setUser(storedUser);
+    };
+
+    window.addEventListener("storage", syncUser);
+    syncUser();
+
+    return () => window.removeEventListener("storage", syncUser);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setDropdownOpen(false);
+    setIsOpen(false);
+    navigate("/LoginCard");
+  };
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -16,77 +41,192 @@ const Navbar = () => {
     { name: "View Complaints", path: "/complaints" },
   ];
 
-  const getButtonStyles = (path) => {
-    const isActive = location.pathname === path;
-    return isActive
-      ? "bg-white text-indigo-600 shadow-sm"
-      : "text-white hover:text-yellow-300";
-  };
+  const desktopActive = "bg-white text-indigo-600 shadow-md";
+  const desktopInactive = "text-white hover:text-yellow-300";
+
+  const mobileActive = "bg-white text-indigo-600";
+  const mobileInactive = "text-white hover:bg-indigo-600";
 
   return (
-    <nav className="w-full bg-indigo-600 py-3 px-8 shadow-md relative z-50">
-      <div className="max-w-[1200px] mx-auto flex items-center">
-        
-        {/* 1. Logo Section (Left) */}
-        <div className="flex-shrink-0">
-          <Link to="/" className="flex items-center gap-2">
-            <FaRoad className="h-6 w-6 text-black bg-white p-1 rounded" />
-            <span className="text-white font-bold text-lg">CleanStreet</span>
-          </Link>
-        </div>
+    <nav className="w-full bg-indigo-600 py-3 px-6 shadow-md sticky top-0 z-50">
+      <div className="max-w-[1200px] mx-auto flex items-center justify-between">
 
-        {/* 2. Nav Links Section (Center) */}
-        <div className="hidden md:flex flex-1 justify-center items-center gap-6">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <FaRoad className="h-7 w-7 text-indigo-600 bg-white p-1.5 rounded-lg shadow" />
+          <span className="text-white font-bold text-xl tracking-wide">
+            CleanStreet
+          </span>
+        </Link>
+
+        {/* Desktop Links */}
+        <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
-            <Link
+            <NavLink
               key={link.name}
               to={link.path}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition duration-300 ${getButtonStyles(link.path)}`}
+              end={link.path === "/"}
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition ${
+                  isActive ? desktopActive : desktopInactive
+                }`
+              }
             >
               {link.name}
-            </Link>
+            </NavLink>
           ))}
         </div>
 
-        {/* 3. Auth Buttons Section (Right) */}
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-          <Link
-            to="/LoginCard"
-            className={`px-5 py-1.5 rounded-full text-sm font-semibold transition duration-300 ${getButtonStyles("/LoginCard")}`}
-          >
-            Login
-          </Link>
-          <Link
-            to="/Register"
-            className={`px-5 py-1.5 rounded-full text-sm font-semibold transition duration-300 ${getButtonStyles("/Register")}`}
-          >
-            Register
-          </Link>
+        {/* Desktop Auth */}
+        <div className="hidden md:flex items-center gap-4">
+          {!user ? (
+            <>
+              <NavLink
+                to="/LoginCard"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-full text-sm font-medium ${
+                    isActive ? desktopActive : desktopInactive
+                  }`
+                }
+              >
+                Login
+              </NavLink>
+
+              <NavLink
+                to="/Register"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-full text-sm font-medium ${
+                    isActive ? desktopActive : desktopInactive
+                  }`
+                }
+              >
+                Register
+              </NavLink>
+            </>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition"
+              >
+                <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </div>
+
+                <span className="text-white font-semibold">
+                  @{user?.username}
+                </span>
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-xl py-2">
+                  <NavLink
+                    to="/profile"
+                    onClick={() => setDropdownOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 ${
+                        isActive ? "bg-indigo-50 text-indigo-600" : "hover:bg-indigo-50"
+                      }`
+                    }
+                  >
+                    <FiUser /> Profile
+                  </NavLink>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50"
+                  >
+                    <FiLogOut /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Mobile Hamburger Icon (Visible only on small screens) */}
-        <div className="md:hidden flex flex-1 justify-end items-center">
-          <button onClick={toggleMenu} className="text-white text-2xl focus:outline-none">
+        {/* Mobile Button */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="text-white text-3xl"
+          >
             {isOpen ? <HiX /> : <HiMenu />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
-      <div className={`${isOpen ? "block" : "hidden"} md:hidden bg-indigo-700 absolute top-full left-0 w-full border-t border-indigo-500 shadow-lg`}>
-        <div className="flex flex-col p-4 space-y-2">
-          {navLinks.concat([{name: "Login", path: "/LoginCard"}, {name: "Register", path: "/Register"}]).map((link) => (
-            <Link
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden mt-4 space-y-4 bg-indigo-700 rounded-xl p-4">
+
+          {navLinks.map((link) => (
+            <NavLink
               key={link.name}
               to={link.path}
+              end={link.path === "/"}
               onClick={() => setIsOpen(false)}
-              className={`px-4 py-3 rounded-lg text-base font-medium transition ${getButtonStyles(link.path)}`}
+              className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg ${
+                  isActive ? mobileActive : mobileInactive
+                }`
+              }
             >
               {link.name}
-            </Link>
+            </NavLink>
           ))}
+
+          <div className="border-t border-indigo-500 pt-4">
+            {!user ? (
+              <>
+                <NavLink
+                  to="/LoginCard"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Login
+                </NavLink>
+
+                <NavLink
+                  to="/Register"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Register
+                </NavLink>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Profile
+                </NavLink>
+
+                <button
+                  onClick={handleLogout}
+                  className="block text-red-300 py-2 px-4"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </nav>
   );
 };
