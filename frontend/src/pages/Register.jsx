@@ -2,6 +2,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import API from '../api/axios';
+
+const handleSignup = async (userData) => {
+  try {
+    const response = await API.post('/auth/register', userData);
+    console.log('User registered:', response.data);
+    alert('Success!');
+  } catch (error) {
+    console.error('Signup failed:', error.response.data.message);
+  }
+};
+
 const Register = () => {
   const navigate = useNavigate();
 
@@ -26,32 +38,23 @@ const Register = () => {
       async (position) => {
         const { latitude, longitude } = position.coords;
         
-        // Option A: Just save the coordinates
-        // setFormData({ ...formData, location: `${latitude}, ${longitude}` });
-
-        // Option B: Get the actual Address (Recommended)
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          setFormData({ ...formData, location: data.display_name });
-        } catch (err) {
-          alert("Could not convert coordinates to an address.");
-        }
+        // Update the form data with the actual numeric coordinates
+        // This ensures the backend User.create() doesn't fail
+        setFormData({ 
+          ...formData, 
+          latitude: latitude, 
+          longitude: longitude,
+          location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` // For the input box
+        });
       },
-      (error) => {
-        alert("Please enable location permissions in your browser.");
-      }
+      (error) => alert("Please enable location permissions.")
     );
-  } else {
-    alert("Geolocation is not supported by your browser.");
   }
 };
 
 
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { fullName, username, email, phone, password, location, role } = formData;
 
@@ -102,12 +105,22 @@ const Register = () => {
     }
 
     // --- Success Action ---
-    // If code reaches here, all validations passed
-    alert(`Success! Registration for ${username} was successful.`);
-    console.log("Form Data Submitted:", formData);
-    
-    // Redirect to login after successful registration
+    const finalData = {
+    ...formData,
+    latitude: formData.latitude, 
+    longitude: formData.longitude
+  };
+
+  try {
+    const response = await API.post('/auth/register', finalData);
+    console.log("Backend Response:", response.data);
+    alert("User registered successfully!");
     navigate("/LoginCard");
+  } catch (error) {
+    const message = error.response?.data?.message || "Registration failed.";
+    alert(message);
+    console.error("Signup Error:", message);
+  }
   };
 
   return (

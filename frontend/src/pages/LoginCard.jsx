@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from '../api/axios'; 
 
 const LoginCard = () => {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  // This is the SINGLE correct handleSubmit function
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -15,26 +16,37 @@ const LoginCard = () => {
       return;
     }
 
-    console.log("Login Data:", { email, password });
+    try {
+      // Sending data to the backend
+      const response = await API.post('/auth/login', { email, password });
+
+      console.log("Login Success:", response.data);
+      alert("Login Successful!");
+
+      // Save the token so the website remembers you
+      localStorage.setItem('token', response.data.token);
+
+      // Go to home page
+      navigate("/"); 
+
+    } catch (error) {
+      // If backend fails (wrong password, user not found, etc.)
+      console.error("Login Error:", error);
+      alert(error.response?.data?.message || "Invalid Email or Password");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-16">
       <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl">
         <div className="text-center mb-7">
-          <h1 className="text-2xl font-bold text-black">
-            Login to CleanStreet
-          </h1>
-          <p className="text-black text-sm mt-2">
-            Login to your account to get started!
-          </p>
+          <h1 className="text-2xl font-bold text-black">Login to CleanStreet</h1>
+          <p className="text-black text-sm mt-2">Login to your account to get started!</p>
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-semibold text-black mb-2">
-              Email
-            </label>
+            <label className="block text-sm font-semibold text-black mb-2">Email</label>
             <input
               type="email"
               placeholder="Enter your email"
@@ -46,9 +58,7 @@ const LoginCard = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-black mb-2">
-              Password
-            </label>
+            <label className="block text-sm font-semibold text-black mb-2">Password</label>
             <input
               type="password"
               placeholder="Enter your password"
