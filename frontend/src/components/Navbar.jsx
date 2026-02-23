@@ -12,6 +12,7 @@ const Navbar = () => {
   const storedUser = localStorage.getItem("user");
   return token && storedUser ? JSON.parse(storedUser) : null;
 });
+
   const navigate = useNavigate();
 
   useEffect(() => {

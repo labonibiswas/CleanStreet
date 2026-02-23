@@ -173,7 +173,7 @@ const statsData = stats ? [
                         <p className="text-xs text-gray-400">{item.time}</p>
                       </td>
                       <td className="px-6 py-4 font-medium text-gray-700">
-                        {item.location}
+                        {item.address}
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-gray-700">
                         {item.priority}
@@ -213,7 +213,7 @@ const statsData = stats ? [
                     <div>
                       <p className="text-gray-500">
                         <span className="font-medium text-gray-700">
-                          {item.location}
+                          {item.address}
                         </span>
                       </p>
                       <p className="text-xs text-gray-400">

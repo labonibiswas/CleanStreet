@@ -8,8 +8,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 
-/*import ReportIssue from "./pages/ReportIssue";
-import ViewComplaint from "./pages/ViewComplaint";*/
+import ReportIssue from "./pages/ReportIssue";
+/*import ViewComplaint from "./pages/ViewComplaint";*/
 
 function App() {
 
@@ -24,7 +24,8 @@ function App() {
                 <Route path="/Register" element={<Register />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                {/*<Route path="/ReportIssue" element={<ReportIssue />} />
+                <Route path="/report" element={<ReportIssue />} />
+                {/*
                 <Route path="/ViewComplaint" element={<ViewComplaint />} />*/}
               </Routes>
             </main>
