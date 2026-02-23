@@ -125,10 +125,6 @@ if (!response.ok) {
 
       
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
-
       navigate("/LoginCard");
     } catch (error) {
       setServerError(error.message);

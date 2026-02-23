@@ -14,6 +14,9 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/authRoutes"));
 
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const issueRoutes = require("./routes/issueRoutes");
+
+app.use("/api/issues", issueRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
 
