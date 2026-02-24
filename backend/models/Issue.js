@@ -5,6 +5,7 @@ const issueSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
+      trim: true, // Clean up whitespace
     },
 
     issueType: {
@@ -15,6 +16,7 @@ const issueSchema = new mongoose.Schema(
     priority: {
       type: String,
       required: true,
+      enum: ["low", "medium", "high", "critical"], // Matches your frontend options
     },
 
     address: {
@@ -22,22 +24,20 @@ const issueSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ✅ Landmark OPTIONAL
     landmark: {
       type: String,
       default: "",
     },
 
-    // ✅ Description REQUIRED
     description: {
       type: String,
       required: true,
     },
 
-    // ✅ Image OPTIONAL
-    imageUrl: {
-      type: String,
-      default: null,
+    // ✅ Array of Cloudinary URLs
+    imageUrls: {
+      type: [String], 
+      default: [],
     },
 
     location: {
@@ -52,20 +52,31 @@ const issueSchema = new mongoose.Schema(
       },
     },
 
+    // ✅ Relationship to pull User Name
     reportedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", // Must match the name used in your User model file
       required: true,
     },
-
+    
     status: {
       type: String,
       default: "Pending",
+      enum: ["Pending", "In Review", "Resolved"], // Standardizes progress tracking
+    },
+
+    // ✅ Dynamic Progress Value
+    progress: {
+      type: Number,
+      default: 0, // Starting point for new civic reports
+      min: 0,
+      max: 100,
     },
   },
-  { timestamps: true }
+  { timestamps: true } // Automatically adds createdAt and updatedAt
 );
 
+// Enable geospatial queries for maps
 issueSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Issue", issueSchema);
