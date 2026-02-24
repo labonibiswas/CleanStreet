@@ -8,8 +8,10 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 
+
 import ReportIssue from "./pages/ReportIssue";
 /*import ViewComplaint from "./pages/ViewComplaint";*/
+import ViewComplaints from "./pages/ViewComplaints";
 
 function App() {
 
@@ -25,8 +27,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/report" element={<ReportIssue />} />
-                {/*
-                <Route path="/ViewComplaint" element={<ViewComplaint />} />*/}
+                <Route path="/complaints" element={<ViewComplaints />} />
               </Routes>
             </main>
           <Footer />
