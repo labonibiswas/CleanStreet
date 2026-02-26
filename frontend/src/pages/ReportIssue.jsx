@@ -42,14 +42,13 @@ const ReportIssue = () => {
     issueType: "",
     priority: "",
     address: "",
-    landmark: "",
+    landmark: "", 
     description: "",
   });
 
   const [coordinates, setCoordinates] = useState(null);
-  // Changed image state to an array for multiple files
   const [images, setImages] = useState([]);
-  const [previews, setPreviews] = useState([]); // State for image previews
+  const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
@@ -72,7 +71,6 @@ const ReportIssue = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle multiple image selection
   const handleImageChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     
@@ -83,12 +81,10 @@ const ReportIssue = () => {
 
     setImages((prev) => [...prev, ...selectedFiles]);
 
-    // Create preview URLs
     const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
     setPreviews((prev) => [...prev, ...newPreviews]);
   };
 
-  // Remove a specific image
   const removeImage = (index) => {
     setImages(images.filter((_, i) => i !== index));
     setPreviews(previews.filter((_, i) => i !== index));
@@ -108,9 +104,8 @@ const ReportIssue = () => {
     data.append("latitude", coordinates[0]);
     data.append("longitude", coordinates[1]);
 
-    // Append multiple images to FormData
     images.forEach((img) => {
-      data.append("images", img); // Backend must use upload.array('images', 4)
+      data.append("images", img);
     });
 
     try {
@@ -122,10 +117,20 @@ const ReportIssue = () => {
         body: data,
       });
 
-      if (!res.ok) throw new Error("Failed to submit report");
+if (!res.ok) {
+  const err = await res.json();
+  throw new Error(err.message || "Failed to submit report");
+}
 
       setSuccess(true);
-      setFormData({ title: "", issueType: "", priority: "", address: "", landmark: "", description: "" });
+      setFormData({ 
+        title: "", 
+        issueType: "", 
+        priority: "", 
+        address: "", 
+        landmark: "", 
+        description: "" 
+      });
       setImages([]);
       setPreviews([]);
     } catch (error) {
@@ -154,39 +159,101 @@ const ReportIssue = () => {
           <form onSubmit={handleSubmit}>
             <div className="grid lg:grid-cols-2 gap-10">
               <div className="space-y-5">
-                {/* Title, Type, Priority, Address, Landmark, Description (Kept same) */}
+                {/* Title */}
                 <div>
-                  <label className="block mb-2 font-medium">Issue Title <span className="text-red-500">*</span></label>
-                  <input name="title" value={formData.title} className="border p-3 rounded-lg w-full" onChange={handleChange} required />
+                  <label className="block mb-2 font-medium">
+                    Issue Title <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    name="title" 
+                    value={formData.title} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                    required 
+                  />
                 </div>
 
+                {/* Issue Type */}
                 <div>
-                  <label className="block mb-2 font-medium">Issue Type <span className="text-red-500">*</span></label>
-                  <select name="issueType" value={formData.issueType} className="border p-3 rounded-lg w-full" onChange={handleChange} required>
+                  <label className="block mb-2 font-medium">
+                    Issue Type <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="issueType" 
+                    value={formData.issueType} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                    required
+                  >
                     <option value="">Select Issue Type</option>
-                    {issueTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    {issueTypes.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
                   </select>
                 </div>
 
+                {/* Priority */}
                 <div>
-                  <label className="block mb-2 font-medium">Priority <span className="text-red-500">*</span></label>
-                  <select name="priority" value={formData.priority} className="border p-3 rounded-lg w-full" onChange={handleChange} required>
+                  <label className="block mb-2 font-medium">
+                    Priority <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="priority" 
+                    value={formData.priority} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                    required
+                  >
                     <option value="">Select Priority</option>
-                    {priorityLevels.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    {priorityLevels.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
                   </select>
                 </div>
 
+                {/* Address */}
                 <div>
-                  <label className="block mb-2 font-medium">Address <span className="text-red-500">*</span></label>
-                  <input name="address" value={formData.address} className="border p-3 rounded-lg w-full" onChange={handleChange} required />
+                  <label className="block mb-2 font-medium">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    name="address" 
+                    value={formData.address} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                    required 
+                  />
                 </div>
 
+                {/* Landmark Field (Optional) */}
                 <div>
-                   <label className="block mb-2 font-medium">Description <span className="text-red-500">*</span></label>
-                   <textarea name="description" value={formData.description} rows={3} className="border p-3 rounded-lg w-full" onChange={handleChange} required />
+                  <label className="block mb-2 font-medium">
+                    Landmark <span className="text-gray-400 text-sm">(Optional)</span>
+                  </label>
+                  <input 
+                    name="landmark" 
+                    value={formData.landmark} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                  />
                 </div>
 
-                {/* UPDATED MULTI-IMAGE UPLOAD SECTION */}
+                {/* Description */}
+                <div>
+                  <label className="block mb-2 font-medium">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea 
+                    name="description" 
+                    value={formData.description} 
+                    rows={3} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none" 
+                    onChange={handleChange} 
+                    required 
+                  />
+                </div>
+
+                {/* Image Upload */}
                 <div>
                   <label className="flex justify-between mb-2 font-medium">
                     <span>Upload Pictures (Max 4)</span>
@@ -205,43 +272,69 @@ const ReportIssue = () => {
                     />
                     <label
                       htmlFor="imageUpload"
-                      className={`cursor-pointer inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg border hover:bg-gray-300 transition ${images.length >= 4 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`cursor-pointer inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-lg border hover:bg-gray-300 transition ${
+                        images.length >= 4 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
                       {images.length >= 4 ? "Limit Reached" : "Choose Files"}
                     </label>
 
                     {/* Image Previews */}
-                    <div className="grid grid-cols-4 gap-2 mt-2">
-                      {previews.map((src, index) => (
-                        <div key={index} className="relative group">
-                          <img src={src} alt="preview" className="w-full h-20 object-cover rounded-lg border" />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow-lg"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {previews.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {previews.map((src, index) => (
+                          <div key={index} className="relative group">
+                            <img 
+                              src={src} 
+                              alt="preview" 
+                              className="w-full h-20 object-cover rounded-lg border" 
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow-lg hover:bg-red-600 transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                >
                   {loading ? "Submitting..." : "Submit Issue"}
                 </button>
               </div>
 
-              {/* RIGHT MAP (Kept same) */}
+              {/* Map */}
               <div>
-                <h3 className="mb-3 font-medium text-gray-700">Click on Map to Select Location <span className="text-red-500">*</span></h3>
+                <h3 className="mb-3 font-medium text-gray-700">
+                  Click on Map to Select Location <span className="text-red-500">*</span>
+                </h3>
                 {coordinates && (
-                  <MapContainer center={coordinates} zoom={13} className="h-[500px] rounded-xl shadow-md">
-                    <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <MapContainer 
+                    center={coordinates} 
+                    zoom={13} 
+                    className="h-[500px] rounded-xl shadow-md"
+                  >
+                    <TileLayer 
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' 
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                    />
                     <LocationPicker setCoordinates={setCoordinates} />
                     <Marker position={coordinates} />
                   </MapContainer>
+                )}
+                {coordinates && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Selected: {coordinates[0].toFixed(6)}, {coordinates[1].toFixed(6)}
+                  </p>
                 )}
               </div>
             </div>

@@ -15,10 +15,19 @@ app.use("/api/auth", require("./routes/authRoutes"));
 
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const issueRoutes = require("./routes/issueRoutes");
+const commentRoutes=require("./routes/commentRoutes");
+const voteRoutes=require("./routes/voteRoutes");
 
 app.use("/api/issues", issueRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/votes", voteRoutes);
+
+app.use((err, req, res, next) => {
+  console.error("MULTER/CLOUDINARY ERROR:", err);
+  res.status(500).json({ message: err.message });
+});
 
 app.get("/", (req, res) => {
   res.send("CleanStreet API Running...");
