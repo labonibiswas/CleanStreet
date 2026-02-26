@@ -10,7 +10,7 @@ import Profile from "./pages/Profile";
 
 
 import ReportIssue from "./pages/ReportIssue";
-/*import ViewComplaint from "./pages/ViewComplaint";*/
+import ComplaintDetails from "./pages/ComplaintDetails";
 import ViewComplaints from "./pages/ViewComplaints";
 
 function App() {
@@ -28,6 +28,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/report" element={<ReportIssue />} />
                 <Route path="/complaints" element={<ViewComplaints />} />
+                <Route path="/complaint/:id" element={<ComplaintDetails />} />
               </Routes>
             </main>
           <Footer />

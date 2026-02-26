@@ -16,7 +16,7 @@ const issueSchema = new mongoose.Schema(
     priority: {
       type: String,
       required: true,
-      enum: ["low", "medium", "high", "critical"], // Matches your frontend options
+      enum: ["low", "medium", "high", "critical"], 
     },
 
     address: {
@@ -34,7 +34,7 @@ const issueSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ✅ Array of Cloudinary URLs
+    
     imageUrls: {
       type: [String], 
       default: [],
@@ -52,7 +52,7 @@ const issueSchema = new mongoose.Schema(
       },
     },
 
-    // ✅ Relationship to pull User Name
+    // Relationship to pull User Name
     reportedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // Must match the name used in your User model file
@@ -64,16 +64,22 @@ const issueSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "In Review", "Resolved"], // Standardizes progress tracking
     },
+    
 
-    // ✅ Dynamic Progress Value
+    // Dynamic Progress Value
     progress: {
       type: Number,
       default: 0, // Starting point for new civic reports
       min: 0,
       max: 100,
     },
+
+  
+
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt
+  { timestamps: true } 
+
+  
 );
 
 // Enable geospatial queries for maps
