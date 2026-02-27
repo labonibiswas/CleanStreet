@@ -1,5 +1,6 @@
 const Issue = require("../models/Issue");
 const Vote = require("../models/Vote");
+const User = require("../models/User");
 
 // Create Issue
 const createIssue = async (req, res) => {
@@ -60,12 +61,37 @@ const getIssues = async (req, res) => {
       .populate("reportedBy", "fullName username email")
       .sort({ createdAt: -1 });
 
-    // Add votes
+    const userId = req.user?._id;
+
     const issuesWithVotes = await Promise.all(
       issues.map(async (issue) => {
-        const upvotes = await Vote.countDocuments({ issue: issue._id, voteType: "upvote" });
-        const downvotes = await Vote.countDocuments({ issue: issue._id, voteType: "downvote" });
-        return { ...issue.toObject(), votes: { upvotes, downvotes } };
+        const upvotes = await Vote.countDocuments({
+          issue: issue._id,
+          voteType: "upvote",
+        });
+
+        const downvotes = await Vote.countDocuments({
+          issue: issue._id,
+          voteType: "downvote",
+        });
+
+        let userVote = null;
+
+        if (userId) {
+          const existingVote = await Vote.findOne({
+            issue: issue._id,
+            user: userId,
+          });
+
+          if (existingVote) {
+            userVote = existingVote.voteType;
+          }
+        }
+
+        return {
+          ...issue.toObject(),
+          votes: { upvotes, downvotes, userVote },
+        };
       })
     );
 
@@ -76,21 +102,177 @@ const getIssues = async (req, res) => {
   }
 };
 
+
+
 // Get single issue by ID
 const getIssueById = async (req, res) => {
   try {
-    const issue = await Issue.findById(req.params.id).populate("reportedBy", "fullName username email");
+    const issue = await Issue.findById(req.params.id)
+      .populate("reportedBy", "fullName username email");
 
-    if (!issue) return res.status(404).json({ message: "Issue not found" });
+    if (!issue)
+      return res.status(404).json({ message: "Issue not found" });
 
-    const upvotes = await Vote.countDocuments({ issue: issue._id, voteType: "upvote" });
-    const downvotes = await Vote.countDocuments({ issue: issue._id, voteType: "downvote" });
+    const upvotes = await Vote.countDocuments({
+      issue: issue._id,
+      voteType: "upvote",
+    });
 
-    res.status(200).json({ ...issue.toObject(), votes: { upvotes, downvotes } });
+    const downvotes = await Vote.countDocuments({
+      issue: issue._id,
+      voteType: "downvote",
+    });
+
+    const userId = req.user?._id;
+
+    let userVote = null;
+
+    if (userId) {
+      const existingVote = await Vote.findOne({
+        issue: issue._id,
+        user: userId,
+      });
+
+      if (existingVote) {
+        userVote = existingVote.voteType;
+      }
+    }
+
+    res.status(200).json({
+      ...issue.toObject(),
+      votes: { upvotes, downvotes, userVote },
+    });
   } catch (error) {
     console.error("GET ISSUE ERROR:", error);
     res.status(500).json({ message: "Failed to fetch issue" });
   }
 };
 
-module.exports = { createIssue, getIssues, getIssueById };
+// DELETE ISSUE
+const deleteIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
+    // SECURITY CHECK: Does the ID from the Token match the ID of the creator?
+    if (issue.reportedBy.toString() !== req.user.id) {
+      return res.status(401).json({ message: "Not authorized to delete this" });
+    }
+
+    await issue.deleteOne();
+    res.json({ message: "Issue removed successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// UPDATE ISSUE (Edit)
+const updateIssue = async (req, res) => {
+  try {
+    let issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
+    
+    let updatedImageUrls = [];
+    if (req.body.imageUrls) {
+      updatedImageUrls = typeof req.body.imageUrls === 'string' 
+        ? JSON.parse(req.body.imageUrls) 
+        : req.body.imageUrls;
+    }
+
+    
+    if (req.files && req.files.length > 0) {
+      const newUploads = req.files.map(file => file.path);
+      updatedImageUrls = [...updatedImageUrls, ...newUploads];
+    }
+
+  
+    const updateData = {
+      title: req.body.title,
+      description: req.body.description,
+      issueType: req.body.issueType,
+      priority: req.body.priority,
+      address: req.body.address,
+      landmark: req.body.landmark,
+      imageUrls: updatedImageUrls, 
+      location: {
+        type: "Point",
+        coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
+      }
+    };
+
+    const updatedIssue = await Issue.findByIdAndUpdate(
+      req.params.id, 
+      updateData, 
+      { returnDocument: 'after', runValidators: true }
+    );
+
+    res.json(updatedIssue);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+// Get complaints within 20km for a volunteer
+
+const getNearbyComplaints = async (req, res) => {
+  try {
+    const volunteer = await User.findById(req.user.id);
+    console.log("Volunteer Location:", volunteer.location.coordinates);
+
+    const nearbyIssues = await Issue.find({
+      status: "Pending",
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: volunteer.location.coordinates,
+          },
+          $maxDistance: 20000, 
+        },
+      },
+    }).populate("reportedBy", "fullName username"); 
+
+    console.log("Found Issues:", nearbyIssues.length);
+    
+    return res.status(200).json(nearbyIssues); 
+
+  } catch (error) {
+    console.error("Error in nearby complaints:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Handle Accept/Reject action
+const respondToComplaint = async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body; 
+
+  try {
+    if (action === "accept") {
+      const issue = await Issue.findByIdAndUpdate(
+        id,
+        { 
+          status: "In Review", 
+          assignedTo: req.user.id,
+          progress: 10 // Initial progress jump
+        },
+        { new: true }
+      );
+      return res.status(200).json({ message: "Complaint accepted", issue });
+    }
+
+    
+    res.status(200).json({ message: "Action acknowledged" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating status", error: error.message });
+  }
+};
+
+
+
+module.exports = { createIssue, getIssues, getIssueById, getNearbyComplaints, updateIssue,  deleteIssue, respondToComplaint};
