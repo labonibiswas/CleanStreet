@@ -58,6 +58,7 @@ const issueSchema = new mongoose.Schema(
       ref: "User", // Must match the name used in your User model file
       required: true,
     },
+   
     
     status: {
       type: String,
@@ -72,6 +73,12 @@ const issueSchema = new mongoose.Schema(
       default: 0, // Starting point for new civic reports
       min: 0,
       max: 100,
+    },
+
+     assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
 
   

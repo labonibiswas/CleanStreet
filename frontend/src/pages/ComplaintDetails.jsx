@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { BiUpvote, BiDownvote } from "react-icons/bi";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { 
+  BiUpvote, BiDownvote, BiArrowBack, BiMap, BiTimeFive, 
+  BiInfoCircle, BiNavigation, BiTargetLock, 
+  BiCategoryAlt, BiCalendarCheck, BiTrendingUp, BiEditAlt, BiTrash
+} from "react-icons/bi";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -9,305 +13,240 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+  iconUrl: markerIcon, shadowUrl: markerShadow,
 });
 
-const DEFAULT_IMAGE =
-  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1gkutdgQHhRK_4bHIaWtDRkIgd1Fgquoj-g&s";
+const DEFAULT_IMAGE = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1gkutdgQHhRK_4bHIaWtDRkIgd1Fgquoj-g&s";
 
 const ComplaintDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [issue, setIssue] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState("");
+  const token = localStorage.getItem("token");
 
-  // Fetch issue with backend data
-  const fetchIssue = async () => {
+  const getCurrentUserId = () => {
+    if (!token) return null;
     try {
-      const res = await fetch(`http://localhost:5000/api/issues/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch issue");
+      const payload = JSON.parse(window.atob(token.split('.')[1]));
+      return payload.id;
+    } catch (e) { return null; }
+  };
+
+  const currentUserId = getCurrentUserId();
+  const isOwner = issue && issue.reportedBy?._id === currentUserId;
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`http://localhost:5000/api/issues/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setIssue(data);
-    } catch (err) {
-      console.error("Error fetching issue:", err);
-      setIssue(null);
-    }
-  };
-
-  // Fetch comments from backend
-  const fetchComments = async () => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/comments/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      const data = await res.json();
-      setComments(data);
-    } catch (err) {
-      console.error("Error fetching comments:", err);
-      setComments([]);
-    }
-  };
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await fetchIssue();
-      await fetchComments();
+      
+      const commRes = await fetch(`http://localhost:5000/api/comments/${id}`);
+      const commData = await commRes.json();
+      setComments(Array.isArray(commData) ? commData : []);
       setLoading(false);
-    };
-    loadData();
-  }, [id]);
-
-  //  Post new comment to backend
-  const handleComment = async () => {
-    if (!comment.trim()) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/comments/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text: comment }),
-      });
-
-      if (!res.ok) throw new Error("Failed to post comment");
-
-      setComment("");
-      fetchComments(); // refresh comments from backend
-    } catch (err) {
-      console.error(err);
-      alert("Error posting comment");
-    }
+    } catch (err) { console.error(err); setLoading(false); }
   };
 
-  // Vote and fetch updated counts from backend
+  useEffect(() => { fetchData(); }, [id]);
+
   const handleVote = async (type) => {
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/api/votes/${id}/vote`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ voteType: type }),
       });
-
-      if (!res.ok) throw new Error("Failed to vote");
-
       const updated = await res.json();
-      setIssue((prev) => ({ ...prev, votes: updated.votes })); // update with backend counts
-    } catch (err) {
-      console.error(err);
-      alert("Error voting");
-    }
+      setIssue((prev) => (prev ? { ...prev, votes: updated.votes } : prev));
+    } catch (err) { alert("Error voting"); }
   };
 
-  if (loading)
-    return <div className="text-center py-20 text-slate-600">Loading...</div>;
+  const handleDelete = async () => {
+    if (!window.confirm("Permanent delete?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/issues/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) navigate("/complaints");
+    } catch (err) { alert("Delete failed"); }
+  };
 
-  if (!issue)
-    return <div className="text-center py-20">Issue not found</div>;
+  const handleComment = async () => {
+    if (!comment.trim()) return;
+    try {
+      await fetch(`http://localhost:5000/api/comments/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text: comment }),
+      });
+      setComment("");
+      const commRes = await fetch(`http://localhost:5000/api/comments/${id}`);
+      const commData = await commRes.json();
+      setComments(Array.isArray(commData) ? commData : []);
+    } catch (err) { alert("Error posting comment"); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-slate-500 font-medium">Loading details...</div>;
+  if (!issue) return <div className="flex items-center justify-center min-h-screen text-slate-500">Issue not found</div>;
 
   const images = issue.imageUrls?.length > 0 ? issue.imageUrls : [DEFAULT_IMAGE];
-  const upvotes = issue.votes?.upvotes || 0;
-  const downvotes = issue.votes?.downvotes || 0;
-
-  const coordinates = issue.location?.coordinates || [];
-  const lat = coordinates[1];
-  const lng = coordinates[0];
-
-  const fullName = issue.reportedBy?.fullName || "Unknown User";
-  const username = issue.reportedBy?.username || "U";
-  const createdDate = new Date(issue.createdAt).toLocaleDateString();
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
-      <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-[#fcfdfe] text-slate-800 pb-8">
+      <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
 
-        {/* BACK BUTTON */}
-        <div className="p-6">
-          <button
-            onClick={() => navigate("/complaints")}
-            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
-          >
-            &larr; Go Back
-          </button>
-        </div>
-
-        {/* IMAGE SCROLL */}
-        <div className="px-6 pb-6">
-          <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 no-scrollbar">
-            {images.map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt="Issue"
-                className="w-[350px] h-[220px] object-cover flex-shrink-0 rounded-xl snap-center shadow-md"
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="p-10">
-          {/* STATUS + PRIORITY */}
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <span className="px-4 py-1 text-xs font-bold uppercase rounded-full bg-blue-100 text-blue-600">
-              {issue.status}
-            </span>
-            <span className="px-4 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 uppercase">
-              {issue.priority}
-            </span>
-          </div>
-
-          {/* TITLE */}
-          <h1 className="text-4xl font-bold text-slate-800 mb-2">
-            {issue.title}
-          </h1>
-
-          {/* REPORTER INFO */}
-          <div className="flex items-center gap-4 mt-4 mb-6">
-            <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow">
-              {username.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-semibold text-slate-800">{fullName}</p>
-              <p className="text-sm text-slate-500">
-                @{username} • Reported on {createdDate}
-              </p>
-            </div>
-          </div>
-
-          {/* PROGRESS BAR */}
-          <div className="mb-8">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="font-semibold text-slate-700">Progress</span>
-              <span className="text-slate-600">{issue.progress}%</span>
-            </div>
-            <div className="w-full bg-slate-200 rounded-full h-3">
-              <div
-                className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${issue.progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* ISSUE DETAILS */}
-          <div className="grid md:grid-cols-2 gap-6 mb-10">
-            <div>
-              <p className="text-sm text-slate-500">Issue Type</p>
-              <p className="font-medium">{issue.issueType}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Address</p>
-              <p className="font-medium">{issue.address}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Landmark</p>
-              <p className="font-medium">{issue.landmark || "N/A"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Last Updated</p>
-              <p className="font-medium">
-                {new Date(issue.updatedAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          {/* DESCRIPTION */}
-          <section className="mb-10">
-            <h2 className="text-2xl font-bold mb-4">Issue Description</h2>
-            <p className="text-slate-600 leading-relaxed">
-              {issue.description}
-            </p>
-          </section>
-
-          {/* MAP */}
-          {lat && lng && (
-            <section className="mb-10">
-              <h2 className="text-2xl font-bold mb-4">Location</h2>
-              <div className="rounded-2xl overflow-hidden border relative z-0">
-                <MapContainer
-                  center={[lat, lng]}
-                  zoom={15}
-                  scrollWheelZoom={false}
-                  style={{ height: "400px", width: "100%" }}
+      {/* HEADER*/}
+      <header className="bg-white px-5 py-2.5 border-b border-slate-200 shadow-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate("/complaints")} className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 transition-colors font-semibold text-sm">
+              <BiArrowBack size={18} /> Back
+            </button>
+            
+            {isOwner && (
+              <div className="flex items-center gap-2 border-l pl-4 border-slate-200">
+                <button 
+                  onClick={() => navigate(`/edit-complaint/${id}`)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-md text-xs font-bold hover:bg-indigo-100 transition-all"
                 >
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[lat, lng]}>
-                    <Popup>{issue.title}</Popup>
-                  </Marker>
+                  <BiEditAlt size={14} /> Edit
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-md text-xs font-bold hover:bg-red-100 transition-all"
+                >
+                  <BiTrash size={14} /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+            <button onClick={() => handleVote("upvote")} className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${issue.votes?.userVote === 'upvote' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+              <BiUpvote size={16} /> <span className="text-sm font-bold">{issue.votes?.upvotes || 0}</span>
+            </button>
+            <button onClick={() => handleVote("downvote")} className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${issue.votes?.userVote === 'downvote' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+              <BiDownvote size={16} /> <span className="text-sm font-bold">{issue.votes?.downvotes || 0}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-5">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 md:p-6 shadow-sm">
+            <div className="flex gap-2 mb-3">
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-indigo-50 text-indigo-700">{issue.status}</span>
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-slate-100 text-slate-600">{issue.priority}</span>
+            </div>
+
+            <h1 className="text-2xl font-bold text-slate-900 mb-4 leading-snug">{issue.title}</h1>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200">
+                {(issue.reportedBy?.username || "U").charAt(0).toUpperCase()}
+              </div>
+              <p className="text-sm font-medium">
+                <span className="text-indigo-600 font-semibold">{issue.reportedBy?.fullName || "Anonymous"}</span>
+                <span className="mx-2 text-slate-300">|</span>
+                <span className="text-slate-500 text-xs inline-flex items-center gap-1"><BiTimeFive /> {new Date(issue.createdAt).toLocaleDateString()}</span>
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {images.map((img, i) => (
+                  <img key={i} src={img} alt="Evidence" className="h-32 w-52 object-cover rounded-lg border border-slate-200 flex-shrink-0" />
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-6">
+              <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+                <BiInfoCircle className="text-indigo-500" /> Description
+              </h3>
+              <p className="text-base text-slate-600 leading-relaxed font-normal">{issue.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-5 border-t border-slate-100">
+              <div className="p-2.5 bg-slate-50/50 rounded-lg border border-slate-100">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Type</p>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <BiCategoryAlt className="text-indigo-500" /> {issue.issueType}
+                </div>
+              </div>
+              <div className="p-2.5 bg-slate-50/50 rounded-lg border border-slate-100">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Landmark</p>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <BiTargetLock className="text-red-400" /> {issue.landmark || "N/A"}
+                </div>
+              </div>
+              <div className="p-2.5 bg-slate-50/50 rounded-lg border border-slate-100">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Progress</p>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <BiTrendingUp className="text-green-500" /> {issue.progress}%
+                </div>
+              </div>
+              <div className="p-2.5 bg-slate-50/50 rounded-lg border border-slate-100">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Updated</p>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <BiCalendarCheck className="text-blue-400" /> {new Date(issue.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <BiMap className="text-red-500" /> Location Details
+            </div>
+            {issue.location?.coordinates && (
+              <div className="h-36 w-full relative z-0">
+                <MapContainer center={[issue.location.coordinates[1], issue.location.coordinates[0]]} zoom={15} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                  <Marker position={[issue.location.coordinates[1], issue.location.coordinates[0]]} />
                 </MapContainer>
               </div>
-            </section>
-          )}
+            )}
+            <div className="p-3.5"><p className="text-xs font-medium text-slate-600 leading-normal">{issue.address}</p></div>
+          </div>
 
-          {/* VOTING */}
-          <section className="mb-10 border-t pt-6">
-            <h2 className="text-2xl font-bold mb-6">Community Feedback</h2>
-            <div className="flex items-center gap-10">
-              <button
-                onClick={() => handleVote("upvote")}
-                className="flex items-center gap-2 text-slate-600 hover:text-indigo-600"
-              >
-                <BiUpvote size={26} />
-                <span className="font-semibold">{upvotes}</span>
-              </button>
-              <button
-                onClick={() => handleVote("downvote")}
-                className="flex items-center gap-2 text-slate-600 hover:text-red-600"
-              >
-                <BiDownvote size={26} />
-                <span className="font-semibold">{downvotes}</span>
-              </button>
+          <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-[400px] shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+              <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Discussion ({comments.length})</h3>
             </div>
-          </section>
-
-          {/* COMMENTS */}
-          <section className="border-t pt-8">
-            <h2 className="text-2xl font-bold mb-6">
-              Comments ({comments.length})
-            </h2>
-
-            <div className="flex gap-3 mb-8">
-              <input
-                type="text"
-                placeholder="Write your comment..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="flex-grow px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                onClick={handleComment}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                Post
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {comments.map((c, index) => (
-                <div key={index} className="bg-slate-50 p-5 rounded-xl shadow-sm">
-                  <p className="font-semibold">{c.user?.fullName || "User"}</p>
-                  <p className="text-slate-600 mt-2">{c.text}</p>
-                  <p className="text-xs text-slate-400 mt-2">
-                    {new Date(c.createdAt).toLocaleString()}
-                  </p>
+            <div className="flex-grow overflow-y-auto p-4 space-y-4 no-scrollbar">
+              {comments.map((c, i) => (
+                <div key={i} className="flex gap-2.5 items-start">
+                  <div className="w-7 h-7 rounded-md bg-slate-100 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-slate-200">
+                    {(c.user?.username || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full">
+                    <p className="text-[11px] font-semibold text-indigo-600 mb-0.5">{c.user?.fullName || "User"}</p>
+                    <p className="text-xs text-slate-600 leading-snug">{c.text}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </section>
+            <div className="p-3 border-t bg-white">
+              <div className="relative">
+                <input type="text" placeholder="Add a comment..." value={comment} onChange={(e) => setComment(e.target.value)} className="w-full pl-3 pr-9 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none font-medium" />
+                <button onClick={handleComment} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-600"><BiNavigation size={18} className="rotate-90" /></button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

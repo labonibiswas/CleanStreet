@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import ReportIssue from "./pages/ReportIssue";
 import ComplaintDetails from "./pages/ComplaintDetails";
 import ViewComplaints from "./pages/ViewComplaints";
+import EditComplaint from "./pages/EditComplaint";
 
 function App() {
 
@@ -29,6 +30,7 @@ function App() {
                 <Route path="/report" element={<ReportIssue />} />
                 <Route path="/complaints" element={<ViewComplaints />} />
                 <Route path="/complaint/:id" element={<ComplaintDetails />} />
+                <Route path="/edit-complaint/:id" element={<EditComplaint />} />
               </Routes>
             </main>
           <Footer />

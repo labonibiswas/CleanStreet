@@ -9,23 +9,56 @@ const voteIssue = async (req, res) => {
 
   try {
     const issue = await Issue.findById(issueId);
-    if (!issue) return res.status(404).json({ message: "Issue not found" });
+    if (!issue) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
 
-    // Check if user has already voted
-    let vote = await Vote.findOne({ issue: issueId, user: userId });
+    const existingVote = await Vote.findOne({
+      issue: issueId,
+      user: userId,
+    });
 
-    if (vote) {
-      vote.voteType = voteType; // update
-      await vote.save();
+    //TOGGLE LOGIC
+    if (existingVote) {
+      if (existingVote.voteType === voteType) {
+        await existingVote.deleteOne();
+      } else {
+        existingVote.voteType = voteType;
+        await existingVote.save();
+      }
     } else {
-      vote = await Vote.create({ issue: issueId, user: userId, voteType });
+      await Vote.create({
+        issue: issueId,
+        user: userId,
+        voteType,
+      });
     }
 
     // Count votes
-    const upvotes = await Vote.countDocuments({ issue: issueId, voteType: "upvote" });
-    const downvotes = await Vote.countDocuments({ issue: issueId, voteType: "downvote" });
+    const upvotes = await Vote.countDocuments({
+      issue: issueId,
+      voteType: "upvote",
+    });
 
-    res.json({ _id: issue._id, votes: { upvotes, downvotes } });
+    const downvotes = await Vote.countDocuments({
+      issue: issueId,
+      voteType: "downvote",
+    });
+
+    // Return user's current vote also
+    const userVoteDoc = await Vote.findOne({
+      issue: issueId,
+      user: userId,
+    });
+
+    res.json({
+      _id: issueId,
+      votes: {
+        upvotes,
+        downvotes,
+        userVote: userVoteDoc ? userVoteDoc.voteType : null,
+      },
+    });
   } catch (error) {
     console.error("VOTE ISSUE ERROR:", error);
     res.status(500).json({ message: "Server error" });

@@ -3,7 +3,6 @@ const User = require("../models/User");
 
 const protect = async (req, res, next) => {
   try {
-    // Check for Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -12,13 +11,9 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // Extract token
     const token = authHeader.split(" ")[1];
-
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find user by ID stored in token
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
@@ -27,9 +22,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
     req.user = user;
-
     next();
   } catch (error) {
     console.error("AUTH ERROR:", error);
@@ -39,4 +32,18 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = protect;
+
+//to check the role
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `Role ${req.user.role} is not authorized to access this resource`,
+      });
+    }
+    next();
+  };
+};
+
+
+module.exports = { protect, authorize };
