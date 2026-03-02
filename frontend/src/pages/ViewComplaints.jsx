@@ -35,13 +35,23 @@ const ViewComplaints = () => {
   }, [token]);
 
   useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/issues", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) throw new Error("Failed to fetch");
-        const data = await response.json();
+                  const fetchReports = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          let url = "http://localhost:5000/api/issues";
+
+          if (viewScope === "Nearby") {
+            url = "http://localhost:5000/api/issues/nearby";
+          }
+
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) throw new Error("Failed to fetch");
+
+          const data = await response.json();
 
         const reportsWithComments = await Promise.all(
           data.map(async (report) => {
@@ -65,7 +75,7 @@ const ViewComplaints = () => {
       }
     };
     fetchReports();
-  }, [token]);
+  }, [token, viewScope]);
 
   const handleVote = async (e, id, type) => {
     e.stopPropagation();
@@ -156,6 +166,18 @@ const ViewComplaints = () => {
             >
               <BiUser size={14} /> My Reports
             </button>
+                          {token && (
+              <button
+                onClick={() => setViewScope("Nearby")}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                  viewScope === "Nearby"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                    : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                Nearby
+              </button>
+            )}
           </div>
         </div>
 
@@ -258,7 +280,17 @@ const ViewComplaints = () => {
                 <div className="p-5 flex flex-col flex-grow">
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex gap-1.5">
-                      <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded-md bg-blue-50 text-blue-600 border border-blue-100">
+                      <span
+                        className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border ${
+                          report.status === "Pending"
+                            ? "bg-orange-50 text-orange-600 border-orange-200"
+                            : report.status === "In Review"
+                            ? "bg-indigo-50 text-indigo-600 border-indigo-200"
+                            : report.status === "Resolved"
+                            ? "bg-green-50 text-green-600 border-green-200"
+                            : "bg-slate-50 text-slate-600 border-slate-200"
+                        }`}
+                      >
                         {report.status || "Pending"}
                       </span>
                       <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded-md bg-slate-50 text-slate-500 border border-slate-200">

@@ -6,7 +6,7 @@ const { createIssue, getIssues, getIssueById, getNearbyComplaints, updateIssue, 
 
 router.post("/", protect, upload.array("images", 4), createIssue);
 router.get("/", protect, getIssues);
-router.get("/nearby", protect, authorize("volunteer"), getNearbyComplaints);
+router.get("/nearby", protect, getNearbyComplaints);
 router.get("/:id", protect, getIssueById);
 router.put("/:id", protect, upload.array("images"), updateIssue);
 router.delete("/:id", protect, deleteIssue)

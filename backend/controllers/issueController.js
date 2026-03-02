@@ -266,6 +266,19 @@ const respondToComplaint = async (req, res) => {
       return res.status(200).json({ message: "Complaint accepted", issue });
     }
 
+    if (action === "reject") {
+  const issue = await Issue.findByIdAndUpdate(
+    id,
+    { status: "Pending", assignedTo: null },
+    { new: true }
+  );
+
+  return res.status(200).json({
+    message: "Complaint rejected",
+    issue,
+  });
+}
+
     
     res.status(200).json({ message: "Action acknowledged" });
   } catch (error) {

@@ -52,6 +52,9 @@ const ComplaintDetails = () => {
   const currentUserId = getCurrentUserId();
   const isOwner = issue && issue.reportedBy?._id === currentUserId;
 
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const isVolunteer = storedUser?.role === "volunteer";
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -125,6 +128,30 @@ const ComplaintDetails = () => {
     }
   };
 
+  const handleRespond = async (action) => {
+  try {
+    const res = await fetch(`http://localhost:5000/api/issues/${id}/respond`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message || "Action failed");
+      return;
+    }
+
+    fetchData();
+  } catch (err) {
+    alert("Network error");
+  }
+};
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-slate-500 font-medium">
@@ -178,6 +205,24 @@ const ComplaintDetails = () => {
               </div>
             )}
           </div>
+
+          {isVolunteer && issue.status === "Pending" && (
+  <div className="flex items-center gap-2 border-l pl-4 border-slate-200">
+    <button
+      onClick={() => handleRespond("accept")}
+      className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md text-xs font-bold hover:bg-green-100"
+    >
+      Accept
+    </button>
+
+    <button
+      onClick={() => handleRespond("reject")}
+      className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md text-xs font-bold hover:bg-red-100"
+    >
+      Reject
+    </button>
+  </div>
+)}
 
           <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
             <button

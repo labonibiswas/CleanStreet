@@ -1,6 +1,5 @@
 const Issue = require("../models/Issue");
 
-// GET DASHBOARD STATS
 exports.getStats = async (req, res) => {
   try {
     const total = await Issue.countDocuments();
@@ -19,7 +18,6 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// GET RECENT ACTIVITY
 exports.getRecent = async (req, res) => {
   try {
     const issues = await Issue.find()
