@@ -217,29 +217,49 @@ const updateIssue = async (req, res) => {
 
 
 
-// Get complaints within 20km for a volunteer
+// Get complaints within 20km of the user
 
 const getNearbyComplaints = async (req, res) => {
   try {
-    const volunteer = await User.findById(req.user.id);
-    console.log("Volunteer Location:", volunteer.location.coordinates);
+    const user = await User.findById(req.user.id);
+    if (!user?.location?.coordinates) {
+      return res.status(400).json({ message: "Your account has no location set. Please update your profile." });
+    }
 
     const nearbyIssues = await Issue.find({
-      status: "Pending",
       location: {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: volunteer.location.coordinates,
+            coordinates: user.location.coordinates,
           },
           $maxDistance: 20000, 
         },
       },
-    }).populate("reportedBy", "fullName username"); 
+    }).populate("reportedBy", "fullName username email")
+      .sort({ createdAt: -1 });
 
-    console.log("Found Issues:", nearbyIssues.length);
+    const userId = req.user?._id;
+
+    const issuesWithVotes = await Promise.all(
+      nearbyIssues.map(async (issue) => {
+        const upvotes = await Vote.countDocuments({ issue: issue._id, voteType: "upvote" });
+        const downvotes = await Vote.countDocuments({ issue: issue._id, voteType: "downvote" });
+
+        let userVote = null;
+        if (userId) {
+          const existingVote = await Vote.findOne({ issue: issue._id, user: userId });
+          if (existingVote) userVote = existingVote.voteType;
+        }
+
+        return {
+          ...issue.toObject(),
+          votes: { upvotes, downvotes, userVote },
+        };
+      })
+    );
     
-    return res.status(200).json(nearbyIssues); 
+    return res.status(200).json(issuesWithVotes); 
 
   } catch (error) {
     console.error("Error in nearby complaints:", error);
