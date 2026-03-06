@@ -250,37 +250,46 @@ const getNearbyComplaints = async (req, res) => {
 // Handle Accept/Reject action
 const respondToComplaint = async (req, res) => {
   const { id } = req.params;
-  const { action } = req.body; 
+  const { action } = req.body;
 
   try {
+    const issue = await Issue.findById(id);
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
     if (action === "accept") {
-      const issue = await Issue.findByIdAndUpdate(
+      if (issue.status !== "Pending") {
+        return res.status(400).json({ message: "Only pending complaints can be accepted" });
+      }
+
+      const updated = await Issue.findByIdAndUpdate(
         id,
-        { 
-          status: "In Review", 
+        {
+          status: "In Review",
           assignedTo: req.user.id,
-          progress: 10 // Initial progress jump
+          progress: 10,
         },
         { new: true }
       );
-      return res.status(200).json({ message: "Complaint accepted", issue });
+      return res.status(200).json({ message: "Complaint accepted", issue: updated });
     }
 
     if (action === "reject") {
-  const issue = await Issue.findByIdAndUpdate(
-    id,
-    { status: "Pending", assignedTo: null },
-    { new: true }
-  );
+      if (issue.status !== "In Review") {
+        return res.status(400).json({ message: "Only in-review complaints can be released" });
+      }
+      if (!issue.assignedTo || issue.assignedTo.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ message: "You can only release complaints assigned to you" });
+      }
 
-  return res.status(200).json({
-    message: "Complaint rejected",
-    issue,
-  });
-}
+      const updated = await Issue.findByIdAndUpdate(
+        id,
+        { status: "Pending", assignedTo: null, progress: 0 },
+        { new: true }
+      );
+      return res.status(200).json({ message: "Complaint released", issue: updated });
+    }
 
-    
-    res.status(200).json({ message: "Action acknowledged" });
+    res.status(400).json({ message: "Invalid action. Use 'accept' or 'reject'" });
   } catch (error) {
     res.status(500).json({ message: "Error updating status", error: error.message });
   }

@@ -15,6 +15,7 @@ import {
   BiEditAlt,
   BiTrash,
 } from "react-icons/bi";
+import { HiOutlineShieldCheck, HiCheckBadge } from "react-icons/hi2";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -37,23 +38,24 @@ const ComplaintDetails = () => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState("");
+  const [responding, setResponding] = useState(false);
   const token = localStorage.getItem("token");
 
-  const getCurrentUserId = () => {
+  const getCurrentUser = () => {
     if (!token) return null;
     try {
       const payload = JSON.parse(window.atob(token.split(".")[1]));
-      return payload.id;
+      return payload;
     } catch (e) {
       return null;
     }
   };
 
-  const currentUserId = getCurrentUserId();
+  const currentUser = getCurrentUser();
+  const currentUserId = currentUser?.id;
   const isOwner = issue && issue.reportedBy?._id === currentUserId;
-
-  const storedUser = JSON.parse(localStorage.getItem("user"));
-  const isVolunteer = storedUser?.role === "volunteer";
+  const isVolunteer = currentUser?.role === "volunteer";
+  const isAssignedToMe = issue?.assignedTo === currentUserId;
 
   const fetchData = async () => {
     try {
@@ -129,28 +131,31 @@ const ComplaintDetails = () => {
   };
 
   const handleRespond = async (action) => {
-  try {
-    const res = await fetch(`http://localhost:5000/api/issues/${id}/respond`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ action }),
-    });
+    setResponding(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/issues/${id}/respond`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      alert(data.message || "Action failed");
-      return;
+      if (!res.ok) {
+        alert(data.message || "Action failed");
+        return;
+      }
+
+      fetchData();
+    } catch (err) {
+      alert("Network error");
+    } finally {
+      setResponding(false);
     }
-
-    fetchData();
-  } catch (err) {
-    alert("Network error");
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -207,22 +212,37 @@ const ComplaintDetails = () => {
           </div>
 
           {isVolunteer && issue.status === "Pending" && (
-  <div className="flex items-center gap-2 border-l pl-4 border-slate-200">
-    <button
-      onClick={() => handleRespond("accept")}
-      className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md text-xs font-bold hover:bg-green-100"
-    >
-      Accept
-    </button>
+            <button
+              disabled={responding}
+              onClick={() => handleRespond("accept")}
+              className="flex items-center gap-2 px-5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 shadow-sm shadow-indigo-200/50 hover:shadow-md hover:from-indigo-500 hover:to-indigo-400 transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:pointer-events-none"
+            >
+              {responding ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <HiOutlineShieldCheck size={15} />} Accept Task
+            </button>
+          )}
 
-    <button
-      onClick={() => handleRespond("reject")}
-      className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md text-xs font-bold hover:bg-red-100"
-    >
-      Reject
-    </button>
-  </div>
-)}
+          {isVolunteer && issue.status === "In Review" && isAssignedToMe && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200/60">
+                <HiCheckBadge size={15} className="text-indigo-600" />
+                <span className="text-[11px] font-bold text-indigo-600">Assigned to you</span>
+              </div>
+              <button
+                disabled={responding}
+                onClick={() => handleRespond("reject")}
+                className="px-4 py-1.5 rounded-lg text-[11px] font-bold text-red-500 bg-white border border-red-200/80 hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.97] disabled:opacity-60"
+              >
+                {responding ? "..." : "Withdraw"}
+              </button>
+            </div>
+          )}
+
+          {isVolunteer && issue.status === "In Review" && !isAssignedToMe && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
+              <HiOutlineShieldCheck size={13} className="text-slate-400" />
+              <span className="text-[11px] font-semibold text-slate-400">Assigned to another volunteer</span>
+            </div>
+          )}
 
           <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
             <button
