@@ -13,6 +13,7 @@ import ReportIssue from "./pages/ReportIssue";
 import ComplaintDetails from "./pages/ComplaintDetails";
 import ViewComplaints from "./pages/ViewComplaints";
 import EditComplaint from "./pages/EditComplaint";
+import AdminPanel from "./pages/AdminPanel";
 
 function App() {
 
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/complaints" element={<ViewComplaints />} />
                 <Route path="/complaint/:id" element={<ComplaintDetails />} />
                 <Route path="/edit-complaint/:id" element={<EditComplaint />} />
+                <Route path="/admin-panel" element={<AdminPanel />} />
               </Routes>
             </main>
           <Footer />
