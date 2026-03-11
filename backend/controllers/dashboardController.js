@@ -13,18 +13,30 @@ exports.getStats = async (req, res) => {
       inProgress,
       resolved
     });
+
   } catch (error) {
     res.status(500).json({ message: "Error loading dashboard stats" });
   }
 };
 
+
 exports.getRecent = async (req, res) => {
   try {
+
     const issues = await Issue.find()
       .sort({ createdAt: -1 })
-      .limit(10)
+      .limit(10);
 
-    res.json(issues);
+    const formatted = issues.map(issue => ({
+      title: issue.title,
+      address: issue.address,
+      priority: issue.priority,
+      status: issue.status,
+      time: issue.createdAt
+    }));
+
+    res.json(formatted);
+
   } catch (error) {
     res.status(500).json({ message: "Error loading recent issues" });
   }
