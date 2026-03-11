@@ -8,10 +8,10 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState(() => {
-  const token = localStorage.getItem("token");
-  const storedUser = localStorage.getItem("user");
-  return token && storedUser ? JSON.parse(storedUser) : null;
-});
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    return token && storedUser ? JSON.parse(storedUser) : null;
+  });
 
   const navigate = useNavigate();
 
@@ -77,6 +77,20 @@ const Navbar = () => {
               {link.name}
             </NavLink>
           ))}
+
+          {/* Admin Link - Desktop (Same Styling) */}
+          {user?.role === "admin" && (
+            <NavLink
+              to="/admin-panel"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition ${
+                  isActive ? desktopActive : desktopInactive
+                }`
+              }
+            >
+              Admin Panel
+            </NavLink>
+          )}
         </div>
 
         {/* Desktop Auth */}
@@ -176,6 +190,21 @@ const Navbar = () => {
               {link.name}
             </NavLink>
           ))}
+
+          {/* Admin Link - Mobile (Same Styling) */}
+          {user?.role === "admin" && (
+            <NavLink
+              to="/admin-panel"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg ${
+                  isActive ? mobileActive : mobileInactive
+                }`
+              }
+            >
+              Admin Panel
+            </NavLink>
+          )}
 
           <div className="border-t border-indigo-500 pt-4">
             {!user ? (

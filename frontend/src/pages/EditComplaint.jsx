@@ -204,10 +204,11 @@ const EditComplaint = () => {
                   value={formData.issueType} 
                   onChange={(e) => setFormData({...formData, issueType: e.target.value})}
                 >
-                  <option value="Pothole">Pothole</option>
-                  <option value="Garbage">Garbage</option>
-                  <option value="Street Light">Street Light</option>
-                  <option value="Other">Other</option>
+                  <option value="pothole">Pothole</option>
+                  <option value="garbage">Garbage</option>
+                  <option value="streetlight">Street Light</option>
+                  <option value="drainage">Drainage Issue</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
               <div>

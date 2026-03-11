@@ -1,3 +1,5 @@
+const dns = require('node:dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']); // Uses Google and Cloudflare DNS
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -17,6 +19,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes=require("./routes/commentRoutes");
 const voteRoutes=require("./routes/voteRoutes");
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 app.use("/api/issues", issueRoutes);
 
