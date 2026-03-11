@@ -17,9 +17,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes=require("./routes/commentRoutes");
 const voteRoutes=require("./routes/voteRoutes");
-const adminRoutes = require("./routes/adminRoutes");
-
-app.use("/api/admin", adminRoutes);
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 app.use("/api/issues", issueRoutes);
 

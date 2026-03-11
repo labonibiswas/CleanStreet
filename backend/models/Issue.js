@@ -5,12 +5,14 @@ const issueSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      trim: true, // Clean up whitespace
+      trim: true, 
     },
 
     issueType: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
     },
 
     priority: {

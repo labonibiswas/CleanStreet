@@ -1,24 +1,46 @@
 const express = require("express");
-const router = express.Router();
-
+const router  = express.Router();
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-const adminController = require("../controllers/adminController");
+const {
+  getAdminStats,
+  getAllUsers,
+  updateUserRole,
+  deleteUser,
+  getVolunteerActiveCount,
+  getAllComplaints,
+  updateComplaintStatus,
+  deleteComplaint,
+  getNearbyVolunteers,
+  assignComplaint,
+  getRecentActivities,
+  downloadCSV,
+  downloadPDF,
+} = require("../controllers/adminController");
 
-router.get("/stats", protect, authorize("admin"), adminController.getStats);
+const adminOnly = [protect, authorize("admin")];
 
-router.get("/users", protect, authorize("admin"), adminController.getUsers);
+//Dashboard
+router.get("/dashboard", ...adminOnly, getAdminStats);
 
-router.put("/users/:id/role", protect, authorize("admin"), adminController.changeRole);
+//Users
+router.get   ("/users",                        ...adminOnly, getAllUsers);
+router.patch ("/users/:id/role",               ...adminOnly, updateUserRole);
+router.get   ("/users/:id/volunteer-check",    ...adminOnly, getVolunteerActiveCount);
+router.delete("/users/:id",                    ...adminOnly, deleteUser);
 
-router.delete("/users/:id", protect, authorize("admin"), adminController.deleteUser);
+//Complaints
+router.get   ("/complaints",                         ...adminOnly, getAllComplaints);
+router.patch ("/complaints/:id/status",              ...adminOnly, updateComplaintStatus);
+router.get   ("/complaints/:id/nearby-volunteers",   ...adminOnly, getNearbyVolunteers);
+router.patch ("/complaints/:id/assign",              ...adminOnly, assignComplaint);
+router.delete("/complaints/:id",                     ...adminOnly, deleteComplaint);
 
-router.get("/complaints", protect, authorize("admin"), adminController.getComplaints);
+//Activities
+router.get("/activities", ...adminOnly, getRecentActivities);
 
-router.put("/complaints/:id/assign", protect, authorize("admin"), adminController.assignVolunteer);
-
-router.get("/activities", protect, authorize("admin"), adminController.getActivities);
-
-router.get("/report", protect, authorize("admin"), adminController.downloadReport);
+//Reports
+router.get("/report/csv", ...adminOnly, downloadCSV);
+router.get("/report/pdf", ...adminOnly, downloadPDF);
 
 module.exports = router;

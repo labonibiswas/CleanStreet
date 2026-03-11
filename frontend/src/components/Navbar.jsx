@@ -7,7 +7,6 @@ import { NavLink, Link, useNavigate } from "react-router-dom";
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -31,29 +30,18 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
     setUser(null);
     setDropdownOpen(false);
     setIsOpen(false);
-
     navigate("/LoginCard");
   };
 
-  /* USER LINKS */
   const navLinks = [
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard" },
     { name: "Report Issue", path: "/report" },
     { name: "View Complaints", path: "/complaints" },
   ];
-
-  /* ADMIN LINKS - Cleaned up to prevent duplicates with the AdminPanel tabs */
-  const adminLinks = [
-    { name: "Home", path: "/" },
-    { name: "Admin Dashboard", path: "/dashboard" },
-  ];
-
-  const links = user?.role === "admin" ? adminLinks : navLinks;
 
   const desktopActive = "bg-white text-indigo-600 shadow-md";
   const desktopInactive = "text-white hover:text-yellow-300";
@@ -64,7 +52,7 @@ const Navbar = () => {
   return (
     <nav className="w-full bg-indigo-600 py-3 px-6 shadow-md sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto flex items-center justify-between">
-        
+
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <FaRoad className="h-7 w-7 text-indigo-600 bg-white p-1.5 rounded-lg shadow" />
@@ -75,12 +63,13 @@ const Navbar = () => {
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-6">
-          {links.map((link) => (
+          {navLinks.map((link) => (
             <NavLink
               key={link.name}
               to={link.path}
+              end={link.path === "/"}
               className={({ isActive }) =>
-                `px-4 py-2 rounded-lg font-semibold transition duration-300 ${
+                `px-4 py-2 rounded-full text-sm font-medium transition ${
                   isActive ? desktopActive : desktopInactive
                 }`
               }
@@ -89,65 +78,111 @@ const Navbar = () => {
             </NavLink>
           ))}
 
-          {/* User Profile / Login Button */}
-          {user ? (
+          {/* Admin Link - Desktop (Same Styling) */}
+          {user?.role === "admin" && (
+            <NavLink
+              to="/admin-panel"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition ${
+                  isActive ? desktopActive : desktopInactive
+                }`
+              }
+            >
+              Admin Panel
+            </NavLink>
+          )}
+        </div>
+
+        {/* Desktop Auth */}
+        <div className="hidden md:flex items-center gap-4">
+          {!user ? (
+            <>
+              <NavLink
+                to="/LoginCard"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-full text-sm font-medium ${
+                    isActive ? desktopActive : desktopInactive
+                  }`
+                }
+              >
+                Login
+              </NavLink>
+
+              <NavLink
+                to="/Register"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-full text-sm font-medium ${
+                    isActive ? desktopActive : desktopInactive
+                  }`
+                }
+              >
+                Register
+              </NavLink>
+            </>
+          ) : (
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 text-white font-semibold hover:text-yellow-300 transition"
+                className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 hover:bg-white/20 transition"
               >
-                <FiUser className="w-5 h-5" />
-                {user.username}
+                <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </div>
+
+                <span className="text-white font-semibold">
+                  @{user?.username}
+                </span>
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl overflow-hidden py-1 border border-gray-100">
-                  <Link
+                <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-xl py-2">
+                  <NavLink
                     to="/profile"
                     onClick={() => setDropdownOpen(false)}
-                    className="block px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 font-medium"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 ${
+                        isActive ? "bg-indigo-50 text-indigo-600" : "hover:bg-indigo-50"
+                      }`
+                    }
                   >
-                    My Profile
-                  </Link>
+                    <FiUser /> Profile
+                  </NavLink>
+
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-medium flex items-center gap-2"
+                    className="w-full text-left flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50"
                   >
-                    <FiLogOut className="w-4 h-4" />
-                    Logout
+                    <FiLogOut /> Logout
                   </button>
                 </div>
               )}
             </div>
-          ) : (
-            <Link
-              to="/LoginCard"
-              className="bg-yellow-400 text-indigo-900 px-5 py-2 rounded-lg font-bold hover:bg-yellow-300 shadow-md transition"
-            >
-              Login
-            </Link>
           )}
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-white hover:text-yellow-300 transition"
-        >
-          {isOpen ? <HiX className="w-7 h-7" /> : <HiMenu className="w-7 h-7" />}
-        </button>
+        {/* Mobile Button */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="text-white text-3xl"
+          >
+            {isOpen ? <HiX /> : <HiMenu />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden mt-4 bg-indigo-700 rounded-lg p-4 flex flex-col gap-3 shadow-inner">
-          {links.map((link) => (
+        <div className="md:hidden mt-4 space-y-4 bg-indigo-700 rounded-xl p-4">
+
+          {navLinks.map((link) => (
             <NavLink
               key={link.name}
               to={link.path}
+              end={link.path === "/"}
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
-                `px-4 py-2 rounded-lg font-semibold transition duration-300 ${
+                `block px-4 py-2 rounded-lg ${
                   isActive ? mobileActive : mobileInactive
                 }`
               }
@@ -156,32 +191,71 @@ const Navbar = () => {
             </NavLink>
           ))}
 
-          {user ? (
-            <>
-              <Link
-                to="/profile"
-                onClick={() => setIsOpen(false)}
-                className={`px-4 py-2 rounded-lg font-semibold transition duration-300 ${mobileInactive}`}
-              >
-                My Profile
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="mt-2 flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-600 shadow-md transition"
-              >
-                <FiLogOut className="w-5 h-5" />
-                Logout
-              </button>
-            </>
-          ) : (
-            <Link
-              to="/LoginCard"
+          {/* Admin Link - Mobile (Same Styling) */}
+          {user?.role === "admin" && (
+            <NavLink
+              to="/admin-panel"
               onClick={() => setIsOpen(false)}
-              className="mt-2 text-center bg-yellow-400 text-indigo-900 px-5 py-2 rounded-lg font-bold hover:bg-yellow-300 shadow-md transition"
+              className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg ${
+                  isActive ? mobileActive : mobileInactive
+                }`
+              }
             >
-              Login
-            </Link>
+              Admin Panel
+            </NavLink>
           )}
+
+          <div className="border-t border-indigo-500 pt-4">
+            {!user ? (
+              <>
+                <NavLink
+                  to="/LoginCard"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Login
+                </NavLink>
+
+                <NavLink
+                  to="/Register"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Register
+                </NavLink>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 rounded-lg ${
+                      isActive ? mobileActive : mobileInactive
+                    }`
+                  }
+                >
+                  Profile
+                </NavLink>
+
+                <button
+                  onClick={handleLogout}
+                  className="block text-red-300 py-2 px-4"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>
