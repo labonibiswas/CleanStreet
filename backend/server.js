@@ -1,5 +1,3 @@
-const dns = require('node:dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']); // Uses Google and Cloudflare DNS
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
