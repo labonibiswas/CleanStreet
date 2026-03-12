@@ -2,6 +2,14 @@ const User = require("../models/User");
 const Issue = require("../models/Issue");
 const Activity = require("../models/Activity");
 
+const issueTypeLabels = {
+  "pothole": "Pothole",
+  "garbage": "Garbage Dump",
+  "streetlight": "Broken Streetlight",
+  "drainage": "Drainage Issue",
+  "other": "Other"
+};
+
 exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
@@ -10,32 +18,31 @@ exports.getStats = async (req, res) => {
     const inProgress = await Issue.countDocuments({ status: "In Progress" });
     const resolved = await Issue.countDocuments({ status: "Resolved" });
 
-    // 1. Complaint Status Distribution
     const statusDistribution = [
       { name: "Pending", value: pending },
       { name: "In Progress", value: inProgress },
       { name: "Resolved", value: resolved },
     ];
 
-    // 2. Complaint Types Distribution & Top 3
     const typeAggr = await Issue.aggregate([
-      { $group: { _id: "$type", count: { $sum: 1 } } },
+      { $group: { _id: { $ifNull: ["$issueType", "$type"] }, count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
     
     const complaintTypes = typeAggr.length > 0 
-      ? typeAggr.map(t => ({ name: t._id || "Uncategorized", value: t.count }))
+      ? typeAggr.map(t => ({ 
+          name: issueTypeLabels[t._id] || t._id || "General", 
+          value: t.count 
+        }))
       : [{ name: "General", value: totalComplaints }];
       
-    const topComplaintTypes = complaintTypes.slice(0, 3);
+    const topComplaintTypes = complaintTypes.slice(0, 5); 
 
-    // 3. User Roles Distribution
     const roleAggr = await User.aggregate([
       { $group: { _id: "$role", count: { $sum: 1 } } }
     ]);
     const userRoles = roleAggr.map(r => ({ name: r._id || "user", value: r.count }));
 
-    // 4. Monthly Trends (Last 6 Months)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
@@ -50,25 +57,13 @@ exports.getStats = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
     
-    const monthlyTrends = trendsAggr.map(t => ({
-      month: t._id,
-      count: t.count
-    }));
+    const monthlyTrends = trendsAggr.map(t => ({ month: t._id, count: t.count }));
 
     res.json({
-      totalUsers,
-      totalComplaints,
-      pending,
-      inProgress,
-      resolved,
-      statusDistribution,
-      complaintTypes,
-      userRoles,
-      topComplaintTypes,
-      monthlyTrends
+      totalUsers, totalComplaints, pending, inProgress, resolved,
+      statusDistribution, complaintTypes, userRoles, topComplaintTypes, monthlyTrends
     });
   } catch (error) {
-    console.error("Error fetching stats:", error);
     res.status(500).json({ message: "Server error fetching stats" });
   }
 };
@@ -78,8 +73,7 @@ exports.getUsers = async (req, res) => {
     const users = await User.find().select("-password");
     res.json(users);
   } catch (error) {
-    console.error("Error in getUsers:", error.message);
-    res.status(500).json({ message: "Failed to fetch users", error: error.message });
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
@@ -91,7 +85,6 @@ exports.changeRole = async (req, res) => {
     user.role = req.body.role;
     await user.save();
     
-    // Log Activity safely
     if (req.user && req.user._id) {
       await Activity.create({
         action: "Role Changed",
@@ -99,11 +92,9 @@ exports.changeRole = async (req, res) => {
         description: `Changed role of ${user.username} to ${req.body.role}`
       });
     }
-
     res.json({ message: "Role updated" });
   } catch (error) {
-    console.error("Error in changeRole:", error.message);
-    res.status(500).json({ message: "Failed to change role", error: error.message });
+    res.status(500).json({ message: "Failed to change role" });
   }
 };
 
@@ -112,75 +103,91 @@ exports.deleteUser = async (req, res) => {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: "User deleted" });
   } catch (error) {
-    console.error("Error in deleteUser:", error.message);
-    res.status(500).json({ message: "Failed to delete user", error: error.message });
+    res.status(500).json({ message: "Failed to delete user" });
   }
 };
 
 exports.getComplaints = async (req, res) => {
   try {
-    // Removed the populate("createdBy") that was causing the 500 Schema crash
-    const issues = await Issue.find()
-      .populate("assignedTo", "username email");
-    
+    const issues = await Issue.find().populate("assignedTo", "username email");
     res.json(issues);
   } catch (error) {
-    console.error("🔥 ERROR IN getComplaints:", error.message);
-    res.status(500).json({ message: "Failed to fetch complaints", error: error.message });
+    res.status(500).json({ message: "Failed to fetch complaints" });
   }
 };
 
 exports.assignVolunteer = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
-    if (!issue) {
-      return res.status(404).json({ message: "Issue not found" });
-    }
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
 
     issue.assignedTo = req.body.volunteerId;
     issue.status = "In Progress";
-    await issue.save();
+    
+    // NEW: We are setting this flag so the Volunteer Dashboard can see who assigned it.
+    issue.assignedByAdmin = true; 
 
-    // Log Activity safely
-    if (req.user && req.user._id) {
-      await Activity.create({
-        action: "Volunteer Assigned",
-        performedBy: req.user._id, 
-        description: `Assigned volunteer to issue: ${issue.title}`
-      });
-    }
+    await issue.save(); 
 
-    res.json({
-      message: "Volunteer assigned successfully",
-      issue
-    });
+    res.json({ message: "Volunteer assigned successfully", issue });
   } catch (error) {
-    console.error("Error in assignVolunteer:", error.message);
-    res.status(500).json({ message: "Error assigning volunteer", error: error.message });
+    res.status(500).json({ message: "Error assigning volunteer" });
   }
 };
 
 exports.getActivities = async (req, res) => {
   try {
-    const activities = await Activity.find()
-      .populate("performedBy", "username email role")
-      .sort({ createdAt: -1 })
-      .limit(20);
-    res.json(activities);
+    const explicitActs = await Activity.find()
+      .populate("performedBy", "username")
+      .sort({ createdAt: -1 }).limit(10);
+
+    const newUsers = await User.find().sort({ createdAt: -1 }).limit(5);
+
+    const newIssues = await Issue.find()
+      .populate({ path: "createdBy", select: "username", strictPopulate: false })
+      .sort({ createdAt: -1 }).limit(5);
+
+    const statusUpdates = await Issue.find({ status: { $ne: "Pending" } })
+      .populate("assignedTo", "username")
+      .sort({ updatedAt: -1 }).limit(10);
+
+    let timeline = [];
+
+    explicitActs.forEach(a => {
+      timeline.push({ action: a.action, description: a.description, user: a.performedBy?.username || "Admin", time: a.createdAt });
+    });
+
+    newUsers.forEach(u => {
+      timeline.push({ action: "New User Registered", description: `Account created for ${u.email}`, user: u.username, time: u.createdAt });
+    });
+
+    newIssues.forEach(i => {
+      timeline.push({ action: "Complaint Raised", description: `New issue reported: "${i.title}"`, user: (i.createdBy && i.createdBy.username) ? i.createdBy.username : "Citizen", time: i.createdAt });
+    });
+
+    statusUpdates.forEach(i => {
+      if (i.status === "Resolved") {
+        timeline.push({ action: "Complaint Resolved", description: `Successfully fixed: "${i.title}"`, user: i.assignedTo?.username || "Volunteer", time: i.updatedAt });
+      } else if (i.status === "In Progress") {
+        timeline.push({ action: "Complaint Accepted", description: `Working on: "${i.title}"`, user: i.assignedTo?.username || "Volunteer", time: i.updatedAt });
+      }
+    });
+
+    timeline.sort((a, b) => new Date(b.time) - new Date(a.time));
+    res.json(timeline.slice(0, 20));
   } catch (error) {
-    console.error("Error in getActivities:", error.message);
-    res.status(500).json({ message: "Failed to fetch activities", error: error.message });
+    res.status(500).json({ message: "Failed to fetch activities" });
   }
 };
 
 exports.downloadReport = async (req, res) => {
   try {
-    // Removed the populate("createdBy") here as well
-    const complaints = await Issue.find()
-      .populate("assignedTo", "username");
+    if (req.user && req.user._id) {
+      await Activity.create({ action: "Report Generated", performedBy: req.user._id, description: "Admin downloaded the statistical report data." });
+    }
+    const complaints = await Issue.find().populate("assignedTo", "username");
     res.json(complaints);
   } catch (error) {
-    console.error("Error in downloadReport:", error.message);
-    res.status(500).json({ message: "Failed to generate report data", error: error.message });
+    res.status(500).json({ message: "Failed to generate report" });
   }
 };

@@ -65,7 +65,16 @@ const issueSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "In Review", "Resolved"], // Standardizes progress tracking
     },
-    
+    // Inside your IssueSchema definition in models/Issue.js:
+  status: {
+    type: String,
+    default: "Pending"
+  },
+  // ADD THIS NEW FIELD:
+  assignedByAdmin: {
+    type: Boolean,
+    default: false
+  },
 
     // Dynamic Progress Value
     progress: {
@@ -80,11 +89,14 @@ const issueSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    
 
   
 
   },
   { timestamps: true } 
+
+  
 
   
 );

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -16,38 +16,42 @@ import ComplaintDetails from "./pages/ComplaintDetails";
 import ViewComplaints from "./pages/ViewComplaints";
 import EditComplaint from "./pages/EditComplaint";
 
+/* ─────────────────────────────────────────────────────────────────
+   DYNAMIC DASHBOARD ROUTER
+   This wrapper guarantees we read the freshest user data from 
+   localStorage exactly when the user navigates to "/dashboard".
+───────────────────────────────────────────────────────────────── */
+const DashboardRouter = () => {
+  const userString = localStorage.getItem("user");
+  const user = userString ? JSON.parse(userString) : null;
+
+  if (!user) {
+    return <Navigate to="/LoginCard" />;
+  }
+
+  if (user.role === "admin") {
+    return <AdminPanel />;
+  }
+
+  return <Dashboard />;
+};
+
 function App() {
-
-  const user = JSON.parse(localStorage.getItem("user"));
-  const role = user?.role;
-
   return (
-
     <Router>
-
       <Navbar />
 
       <main className="min-h-screen">
-
         <Routes>
-
           <Route path="/" element={<Home />} />
-
           <Route path="/LoginCard" element={<LoginCard />} />
-
           <Route path="/Register" element={<Register />} />
-
           <Route path="/profile" element={<Profile />} />
 
-          {/* USER DASHBOARD */}
-
-          <Route
-            path="/dashboard"
-            element={role === "admin" ? <AdminPanel /> : <Dashboard />}
-          />
+          {/* DYNAMIC DASHBOARD ROUTE */}
+          <Route path="/dashboard" element={<DashboardRouter />} />
 
           {/* ADMIN PANEL DIRECT ROUTE */}
-
           <Route
             path="/admin-panel"
             element={
@@ -58,19 +62,13 @@ function App() {
           />
 
           <Route path="/report" element={<ReportIssue />} />
-
           <Route path="/complaints" element={<ViewComplaints />} />
-
           <Route path="/complaint/:id" element={<ComplaintDetails />} />
-
           <Route path="/edit-complaint/:id" element={<EditComplaint />} />
-
         </Routes>
-
       </main>
 
       <Footer />
-
     </Router>
   );
 }

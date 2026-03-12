@@ -1,4 +1,3 @@
-// src/pages/Register.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
@@ -20,6 +19,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false); // New state for location loading
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,29 +29,56 @@ const Register = () => {
     }
   };
 
-  
+  // UPDATED: Now converts GPS coordinates into a City Name!
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
       return;
     }
 
+    setLocating(true);
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
 
-        setFormData((prev) => ({
-          ...prev,
-          location: {
-            type: "Point",
-            coordinates: [longitude, latitude], 
-          },
-        }));
+        try {
+          // Free OpenStreetMap Reverse Geocoding API
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          
+          // Extract the most accurate city/town name
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state_district || "Unknown Location";
+          const fullAddress = data.display_name;
+
+          setFormData((prev) => ({
+            ...prev,
+            location: {
+              type: "Point",
+              coordinates: [longitude, latitude], 
+              city: city,
+              address: fullAddress
+            },
+          }));
+
+        } catch (error) {
+          console.error("Geocoding failed, saving raw coordinates.");
+          // Fallback if API fails
+          setFormData((prev) => ({
+            ...prev,
+            location: {
+              type: "Point",
+              coordinates: [longitude, latitude], 
+            },
+          }));
+        }
 
         setLocationCaptured(true);
+        setLocating(false);
       },
       () => {
         alert("Please allow location access.");
+        setLocating(false);
       }
     );
   };
@@ -60,22 +87,19 @@ const Register = () => {
     e.preventDefault();
     setServerError("");
 
-    const { fullName, username, email, phone, password, role, location } =
-      formData;
+    const { fullName, username, email, phone, password, role, location } = formData;
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phonePattern = /^[0-9]{10}$/;
     const usernamePattern = /^[a-zA-Z0-9_]{3,15}$/;
-    const passwordPattern =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
     let newErrors = {};
 
     if (!fullName) newErrors.fullName = "Full name is required.";
     if (!username) newErrors.username = "Username is required.";
     else if (!usernamePattern.test(username))
-      newErrors.username =
-        "3-15 characters (letters, numbers, underscores only).";
+      newErrors.username = "3-15 characters (letters, numbers, underscores only).";
 
     if (!email) newErrors.email = "Email is required.";
     else if (!emailPattern.test(email))
@@ -87,8 +111,7 @@ const Register = () => {
 
     if (!password) newErrors.password = "Password required.";
     else if (!passwordPattern.test(password))
-      newErrors.password =
-        "8+ chars, uppercase, lowercase, number & special char.";
+      newErrors.password = "8+ chars, uppercase, lowercase, number & special char.";
 
     if (!role) newErrors.role = "Select role.";
     if (!location) newErrors.location = "Please capture your location.";
@@ -102,28 +125,22 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-  "http://localhost:5000/api/auth/register",
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(formData),
-  }
-);
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-let data;
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        throw new Error("Server error — not valid JSON response");
+      }
 
-try {
-  data = await response.json();
-} catch (err) {
-  throw new Error("Server error — not valid JSON response");
-}
-
-if (!response.ok) {
-  throw new Error(data.message || "Registration failed");
-}
-
-      
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
 
       navigate("/LoginCard");
     } catch (error) {
@@ -136,14 +153,9 @@ if (!response.ok) {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-16">
       <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl">
-
         <div className="text-center mb-7">
-          <h1 className="text-2xl font-bold text-black">
-            Register for CleanStreet
-          </h1>
-          <p className="text-black text-sm mt-2">
-            Create your account to get started!
-          </p>
+          <h1 className="text-2xl font-bold text-black">Register for CleanStreet</h1>
+          <p className="text-black text-sm mt-2">Create your account to get started!</p>
         </div>
 
         {serverError && (
@@ -153,123 +165,60 @@ if (!response.ok) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          <input type="text" name="fullName" placeholder="Full Name *" value={formData.fullName} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300" />
+          {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
 
-          <input
-            type="text"
-            name="fullName"
-            placeholder="Full Name *"
-            value={formData.fullName}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          />
-          {errors.fullName && (
-            <p className="text-red-500 text-sm">{errors.fullName}</p>
-          )}
+          <input type="text" name="username" placeholder="Username *" value={formData.username} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300" />
+          {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
 
-          <input
-            type="text"
-            name="username"
-            placeholder="Username *"
-            value={formData.username}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          />
-          {errors.username && (
-            <p className="text-red-500 text-sm">{errors.username}</p>
-          )}
+          <input type="email" name="email" placeholder="Email *" value={formData.email} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300" />
+          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email *"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          />
-          {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email}</p>
-          )}
-
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone *"
-            value={formData.phone}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          />
-          {errors.phone && (
-            <p className="text-red-500 text-sm">{errors.phone}</p>
-          )}
+          <input type="tel" name="phone" placeholder="Phone *" value={formData.phone} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300" />
+          {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
 
           {/* 📍 Location Capture Button */}
           <div className="flex items-center gap-3">
-  <button
-    type="button"
-    onClick={handleGetLocation}
-    className="flex items-center gap-2 px-5 py-2.5 
-               bg-gradient-to-r from-indigo-500 to-purple-600 
-               text-white font-medium rounded-full 
-               shadow-md hover:shadow-lg 
-               hover:scale-105 transition-all duration-300"
-  >
-    <FaMapMarkerAlt className="text-white text-lg" />
-    Capture Location
-  </button>
+            <button
+              type="button"
+              onClick={handleGetLocation}
+              disabled={locating}
+              className={`flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-full shadow-md transition-all duration-300 ${locating ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-105'}`}
+            >
+              <FaMapMarkerAlt className="text-white text-lg" />
+              {locating ? "Finding City..." : "Capture Location"}
+            </button>
 
-  {locationCaptured && (
-    <span className="text-green-600 text-sm font-semibold animate-pulse">
-      Location captured ✅
-    </span>
-  )}
-</div>
+            {locationCaptured && formData.location?.city && (
+              <span className="text-green-600 text-sm font-semibold">
+                ✅ {formData.location.city}
+              </span>
+            )}
+            {locationCaptured && !formData.location?.city && (
+              <span className="text-green-600 text-sm font-semibold">✅ Captured</span>
+            )}
+          </div>
+          {errors.location && <p className="text-red-500 text-sm">{errors.location}</p>}
 
-          {errors.location && (
-            <p className="text-red-500 text-sm">{errors.location}</p>
-          )}
+          <input type="password" name="password" placeholder="Password *" value={formData.password} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300" />
+          {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password *"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm">{errors.password}</p>
-          )}
-
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300"
-          >
+          <select name="role" value={formData.role} onChange={handleChange} className="w-full px-4 py-3 rounded-lg border border-gray-300">
             <option value="">Choose your role *</option>
             <option value="citizen">Citizen</option>
             <option value="volunteer">Volunteer</option>
             <option value="admin">Admin</option>
           </select>
-          {errors.role && (
-            <p className="text-red-500 text-sm">{errors.role}</p>
-          )}
+          {errors.role && <p className="text-red-500 text-sm">{errors.role}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold"
-          >
+          <button type="submit" disabled={loading} className="w-full py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">
             {loading ? "Registering..." : "Register Now"}
           </button>
         </form>
 
         <p className="text-center text-sm text-black mt-6">
           Already have an account?{" "}
-          <span
-            onClick={() => navigate("/LoginCard")}
-            className="text-purple-600 font-semibold cursor-pointer hover:underline"
-          >
+          <span onClick={() => navigate("/LoginCard")} className="text-purple-600 font-semibold cursor-pointer hover:underline">
             Login
           </span>
         </p>

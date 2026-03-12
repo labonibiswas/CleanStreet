@@ -47,7 +47,7 @@ const Navbar = () => {
     { name: "View Complaints", path: "/complaints" },
   ];
 
-  /* ADMIN LINKS - Cleaned up to prevent duplicates with the AdminPanel tabs */
+  /* ADMIN LINKS */
   const adminLinks = [
     { name: "Home", path: "/" },
     { name: "Admin Dashboard", path: "/dashboard" },
@@ -65,7 +65,6 @@ const Navbar = () => {
     <nav className="w-full bg-indigo-600 py-3 px-6 shadow-md sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto flex items-center justify-between">
         
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <FaRoad className="h-7 w-7 text-indigo-600 bg-white p-1.5 rounded-lg shadow" />
           <span className="text-white font-bold text-xl tracking-wide">
@@ -73,7 +72,6 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-6">
           {links.map((link) => (
             <NavLink
@@ -89,7 +87,6 @@ const Navbar = () => {
             </NavLink>
           ))}
 
-          {/* User Profile / Login Button */}
           {user ? (
             <div className="relative">
               <button
@@ -129,7 +126,6 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile Menu Toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="md:hidden text-white hover:text-yellow-300 transition"
@@ -138,7 +134,6 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden mt-4 bg-indigo-700 rounded-lg p-4 flex flex-col gap-3 shadow-inner">
           {links.map((link) => (

@@ -58,14 +58,35 @@ const ReportIssue = () => {
     if (!token) {
       setMessage("You must login to report an issue.");
       const timer = setTimeout(() => navigate("/LoginCard"), 2000);
-      return () => clearTimeout(timer); // Corrected timer cleanup
+      return () => clearTimeout(timer);
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => setCoordinates([pos.coords.latitude, pos.coords.longitude]),
-      () => setCoordinates([13.085, 80.2101])
+      () => setCoordinates([13.085, 80.2101]) // Default to Chennai
     );
   }, [navigate, token]);
+
+  // UPDATED: Automatically fetch the City Name when the map pin moves!
+  useEffect(() => {
+    const fetchCityName = async () => {
+      if (coordinates) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates[0]}&lon=${coordinates[1]}`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state_district || "";
+          
+          // Auto-fill the address input so the backend receives text instead of being empty
+          if (city) {
+            setFormData(prev => ({ ...prev, address: prev.address ? prev.address : city }));
+          }
+        } catch (error) {
+          console.error("Could not fetch city name.");
+        }
+      }
+    };
+    fetchCityName();
+  }, [coordinates]);
 
   if (!token) {
     return (
@@ -130,7 +151,6 @@ const ReportIssue = () => {
       }
 
       setSuccess(true);
-      // Optional: Redirect to dashboard after 3 seconds
       setTimeout(() => navigate("/complaints"), 3000);
     } catch (error) {
       setMessage(error.message);
@@ -166,14 +186,12 @@ const ReportIssue = () => {
               <form onSubmit={handleSubmit}>
                 <div className="grid lg:grid-cols-2 gap-12">
                   <div className="space-y-6">
-                    {/* Title */}
                     <div>
                       <label className="block mb-2 text-sm font-bold text-slate-700">Issue Title <span className="text-red-500">*</span></label>
                       <input name="title" value={formData.title} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all" onChange={handleChange} placeholder="Brief title of the problem" required />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Issue Type */}
                       <div>
                         <label className="block mb-2 text-sm font-bold text-slate-700">Type <span className="text-red-500">*</span></label>
                         <select name="issueType" value={formData.issueType} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" onChange={handleChange} required>
@@ -182,7 +200,6 @@ const ReportIssue = () => {
                         </select>
                       </div>
 
-                      {/* Priority */}
                       <div>
                         <label className="block mb-2 text-sm font-bold text-slate-700">Priority <span className="text-red-500">*</span></label>
                         <select name="priority" value={formData.priority} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" onChange={handleChange} required>
@@ -192,22 +209,19 @@ const ReportIssue = () => {
                       </div>
                     </div>
 
-                    {/* Address & Landmark */}
                     <div>
-                      <label className="block mb-2 text-sm font-bold text-slate-700">Address <span className="text-red-500">*</span></label>
-                      <input name="address" value={formData.address} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none mb-4" onChange={handleChange} placeholder="Street name, Area..." required />
+                      <label className="block mb-2 text-sm font-bold text-slate-700">City / Address <span className="text-red-500">*</span></label>
+                      <input name="address" value={formData.address} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none mb-4" onChange={handleChange} placeholder="Click map to auto-fill, or type..." required />
                       
                       <label className="block mb-2 text-sm font-bold text-slate-700">Landmark <span className="text-slate-400 font-normal">(Optional)</span></label>
                       <input name="landmark" value={formData.landmark} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none" onChange={handleChange} placeholder="Near XYZ store..." />
                     </div>
 
-                    {/* Description */}
                     <div>
                       <label className="block mb-2 text-sm font-bold text-slate-700">Description <span className="text-red-500">*</span></label>
                       <textarea name="description" value={formData.description} rows={3} className="w-full border border-slate-200 p-3 rounded-xl focus:ring-4 focus:ring-indigo-500/10 outline-none" onChange={handleChange} placeholder="Describe the issue in detail..." required />
                     </div>
 
-                    {/* Image Upload */}
                     <div className="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300">
                       <div className="flex justify-between mb-3">
                         <span className="text-sm font-bold text-slate-700">Evidence Pictures</span>
@@ -235,7 +249,6 @@ const ReportIssue = () => {
                     </button>
                   </div>
 
-                  {/* Map Column */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                        <h3 className="font-bold text-slate-700">Pinpoint Location <span className="text-red-500">*</span></h3>

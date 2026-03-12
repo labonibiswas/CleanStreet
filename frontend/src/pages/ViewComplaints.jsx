@@ -39,23 +39,23 @@ const ViewComplaints = () => {
   }, [token]);
 
   useEffect(() => {
-                  const fetchReports = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          let url = "http://localhost:5000/api/issues";
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        let url = "http://localhost:5000/api/issues";
 
-          if (viewScope === "Nearby") {
-            url = "http://localhost:5000/api/issues/nearby";
-          }
+        if (viewScope === "Nearby") {
+          url = "http://localhost:5000/api/issues/nearby";
+        }
 
-          const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-          if (!response.ok) throw new Error("Failed to fetch");
+        if (!response.ok) throw new Error("Failed to fetch");
 
-          const data = await response.json();
+        const data = await response.json();
 
         const reportsWithComments = await Promise.all(
           data.map(async (report) => {
@@ -295,6 +295,7 @@ const ViewComplaints = () => {
                 >
                   <option value="All">All Status</option>
                   <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
                   <option value="In Review">In Review</option>
                   <option value="Resolved">Resolved</option>
                 </select>
@@ -420,7 +421,7 @@ const ViewComplaints = () => {
                         className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border ${
                           report.status === "Pending"
                             ? "bg-orange-50 text-orange-600 border-orange-200"
-                            : report.status === "In Review"
+                            : report.status === "In Progress" || report.status === "In Review"
                             ? "bg-indigo-50 text-indigo-600 border-indigo-200"
                             : report.status === "Resolved"
                             ? "bg-green-50 text-green-600 border-green-200"
@@ -463,8 +464,15 @@ const ViewComplaints = () => {
                   {/* VOLUNTEER ACTION PANEL */}
                   {isVolunteer && viewScope !== "Declined" && (() => {
                     const isPending = report.status === "Pending";
-                    const isAssignedToMe = report.assignedTo === currentUser?.id || report.assignedTo === currentUser?._id;
-                    const isInReview = report.status === "In Review";
+                    // Check both robustly in case populated as object or string ID
+                    const isAssignedToMe = 
+                       report.assignedTo === currentUser?.id || 
+                       report.assignedTo === currentUser?._id || 
+                       report.assignedTo?._id === currentUser?.id || 
+                       report.assignedTo?._id === currentUser?._id;
+                    
+                    // FIXED: Admin sets it to "In Progress", so we check for both.
+                    const isInProgress = report.status === "In Progress" || report.status === "In Review";
 
                     if (isPending) {
                       const isLoading = respondingId === report._id;
@@ -490,33 +498,41 @@ const ViewComplaints = () => {
                       );
                     }
 
-                    if (isInReview && isAssignedToMe) {
+                    if (isInProgress && isAssignedToMe) {
                       const isLoading = respondingId === report._id;
                       return (
-                        <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-indigo-50/80 to-blue-50/40 border border-indigo-200/60">
+                        <div className={`mb-4 p-3 rounded-2xl border ${report.assignedByAdmin ? 'bg-amber-50/60 border-amber-200/60' : 'bg-gradient-to-r from-indigo-50/80 to-blue-50/40 border-indigo-200/60'}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${report.assignedByAdmin ? 'bg-amber-500' : 'bg-indigo-600'}`}>
                                 <HiCheckBadge size={15} className="text-white" />
                               </div>
                               <div>
-                                <p className="text-[11px] font-bold text-indigo-700 leading-none">Assigned to you</p>
-                                <p className="text-[9px] text-indigo-400 mt-0.5">You are handling this complaint</p>
+                                <p className={`text-[11px] font-bold leading-none ${report.assignedByAdmin ? 'text-amber-700' : 'text-indigo-700'}`}>
+                                  {report.assignedByAdmin ? "Assigned by Admin" : "Assigned to you"}
+                                </p>
+                                <p className={`text-[9px] mt-0.5 ${report.assignedByAdmin ? 'text-amber-500' : 'text-indigo-400'}`}>
+                                  {report.assignedByAdmin ? "An admin gave this to you" : "You are handling this complaint"}
+                                </p>
                               </div>
                             </div>
-                            <button
-                              disabled={isLoading}
-                              onClick={(e) => handleRespond(e, report._id, "reject")}
-                              className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-red-500 bg-white border border-red-200/80 hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:pointer-events-none"
-                            >
-                              {isLoading ? "..." : "Withdraw"}
-                            </button>
+                            
+                            {/* Only allow withdrawal if the volunteer accepted it themselves */}
+                            {!report.assignedByAdmin && (
+                                <button
+                                  disabled={isLoading}
+                                  onClick={(e) => handleRespond(e, report._id, "reject")}
+                                  className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-red-500 bg-white border border-red-200/80 hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:pointer-events-none"
+                                >
+                                  {isLoading ? "..." : "Withdraw"}
+                                </button>
+                            )}
                           </div>
                         </div>
                       );
                     }
 
-                    if (isInReview && !isAssignedToMe) {
+                    if (isInProgress && !isAssignedToMe) {
                       return (
                         <div className="mb-4 p-2.5 rounded-2xl bg-slate-50/80 border border-slate-200/60">
                           <div className="flex items-center gap-2">
