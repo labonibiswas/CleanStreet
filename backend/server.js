@@ -17,13 +17,21 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes=require("./routes/commentRoutes");
 const voteRoutes=require("./routes/voteRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const feedbackRoutes = require("./routes/feedbackRoutes");
+const userRoutes = require("./routes/userRoutes");
+
+app.use("/api/users", require("./routes/userRoutes"));
 app.use('/api/admin', require('./routes/adminRoutes'));
 
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api/issues", issueRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/votes", voteRoutes);
+
 
 app.use((err, req, res, next) => {
   console.error("MULTER/CLOUDINARY ERROR:", err);

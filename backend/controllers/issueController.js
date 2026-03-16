@@ -1,6 +1,7 @@
 const Issue = require("../models/Issue");
 const Vote = require("../models/Vote");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 
 
 const logActivity = async (data) => {
@@ -246,16 +247,16 @@ const getNearbyComplaints = async (req, res) => {
   }
 };
 
-
 // RESPOND TO COMPLAINT (accept / reject)
 const respondToComplaint = async (req, res) => {
-  const { id }     = req.params;
+  const { id } = req.params;
   const { action } = req.body;
 
   try {
     const issue = await Issue.findById(id);
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
+    // --- ACTION: ACCEPT ---
     if (action === "accept") {
       if (issue.status !== "Pending") {
         return res.status(400).json({ message: "Only pending complaints can be accepted" });
@@ -267,19 +268,26 @@ const respondToComplaint = async (req, res) => {
         { new: true }
       );
 
-      // ── Log activity ──
+      // Create Notification for the Reporter
+      await Notification.create({
+        recipient: issue.reportedBy,
+        message: `A volunteer has accepted your issue: "${issue.title}". They are now working on it!`,
+      });
+
+      // Log activity
       await logActivity({
-        type:        "assigned",
-        userName:    req.user.fullName || req.user.username || "Volunteer",
+        type: "assigned",
+        userName: req.user.fullName || req.user.username || "Volunteer",
         description: `accepted complaint "${issue.title}"`,
-        issueTitle:  issue.title,
-        userId:      req.user.id,
-        issueId:     issue._id,
+        issueTitle: issue.title,
+        userId: req.user.id,
+        issueId: issue._id,
       });
 
       return res.status(200).json({ message: "Complaint accepted", issue: updated });
     }
 
+    // --- ACTION: REJECT (Release) ---
     if (action === "reject") {
       if (issue.status !== "In Review") {
         return res.status(400).json({ message: "Only in-review complaints can be released" });
@@ -294,14 +302,14 @@ const respondToComplaint = async (req, res) => {
         { new: true }
       );
 
-      // ── Log activity ──
+      // Log activity
       await logActivity({
-        type:        "status_change",
-        userName:    req.user.fullName || req.user.username || "Volunteer",
+        type: "status_change",
+        userName: req.user.fullName || req.user.username || "Volunteer",
         description: `withdrew from complaint "${issue.title}"`,
-        issueTitle:  issue.title,
-        userId:      req.user.id,
-        issueId:     issue._id,
+        issueTitle: issue.title,
+        userId: req.user.id,
+        issueId: issue._id,
       });
 
       return res.status(200).json({ message: "Complaint released", issue: updated });
@@ -313,6 +321,42 @@ const respondToComplaint = async (req, res) => {
   }
 };
 
+const updateStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, progress } = req.body; // Added progress as well
+
+  try {
+    // Note: use 'Issue', not 'Complaint'
+    const issue = await Issue.findByIdAndUpdate(
+      id, 
+      { status, progress }, 
+      { new: true }
+    );
+
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
+    // CREATE THE NOTIFICATION
+    await Notification.create({
+      recipient: issue.reportedBy, // Matches your 'reportedBy' field in Issue model
+      message: `Update: Your issue "${issue.title}" is now "${status}".`,
+    });
+
+    // Log activity
+    await logActivity({
+      type: "status_change",
+      userName: "Admin",
+      description: `changed status of "${issue.title}" to ${status}`,
+      issueTitle: issue.title,
+      userId: req.user.id,
+      issueId: issue._id,
+    });
+
+    res.json(issue);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createIssue,
   getIssues,
@@ -321,4 +365,5 @@ module.exports = {
   updateIssue,
   deleteIssue,
   respondToComplaint,
+  updateStatus,
 };

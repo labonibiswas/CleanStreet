@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from 'react-hot-toast';
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -10,6 +11,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
+import FeedbackForm from "./pages/Feedback";
+import AdminFeedback from './pages/AdminFeedback';
 
 import ReportIssue from "./pages/ReportIssue";
 import ComplaintDetails from "./pages/ComplaintDetails";
@@ -64,6 +67,10 @@ function App() {
           <Route path="/complaint/:id" element={<ComplaintDetails />} />
 
           <Route path="/edit-complaint/:id" element={<EditComplaint />} />
+
+          <Route path="/feedback" element={<FeedbackForm />} />
+
+          <Route path="/admin-feedback" element={<AdminFeedback />} />
 
         </Routes>
 
