@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 
@@ -20,9 +21,22 @@ import ViewComplaints from "./pages/ViewComplaints";
 import EditComplaint from "./pages/EditComplaint";
 
 function App() {
+  // 1. Make role a React state so it can update dynamically
+  const [role, setRole] = useState(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.role;
+  });
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const role = user?.role;
+  // 2. Tell App to listen for the exact moment the user logs in or out
+  useEffect(() => {
+    const syncRole = () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      setRole(user?.role);
+    };
+
+    window.addEventListener("storage", syncRole);
+    return () => window.removeEventListener("storage", syncRole);
+  }, []);
 
   return (
 
