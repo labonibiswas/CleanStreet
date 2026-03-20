@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/upload");
 const {protect, authorize} = require("../middleware/authMiddleware");
-const { createIssue, getIssues, getIssueById, getNearbyComplaints, updateIssue, deleteIssue, respondToComplaint } = require("../controllers/issueController");
+const { createIssue, getIssues, getIssueById, getNearbyComplaints, updateIssue, deleteIssue, respondToComplaint, updateStatus } = require("../controllers/issueController");
 
 router.post("/", protect, upload.array("images", 4), createIssue);
 router.get("/", protect, getIssues);
@@ -14,5 +14,7 @@ router.delete("/:id", protect, deleteIssue)
 
 // Route to accept/reject a task
 router.patch("/:id/respond", protect, authorize("volunteer"), respondToComplaint);
+
+router.put("/:id/status", protect, updateStatus);
 
 module.exports = router;

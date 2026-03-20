@@ -257,31 +257,20 @@ const respondToComplaint = async (req, res) => {
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
     // --- ACTION: ACCEPT ---
-    if (action === "accept") {
-      if (issue.status !== "Pending") {
-        return res.status(400).json({ message: "Only pending complaints can be accepted" });
-      }
-
+  if (action === "accept") {
+      // ... check status logic ...
       const updated = await Issue.findByIdAndUpdate(
         id,
         { status: "In Review", assignedTo: req.user.id, progress: 10 },
-        { new: true }
+        { returnDocument: "after" }
       );
 
-      // Create Notification for the Reporter
+      // ONLY notify that it was accepted here
       await Notification.create({
         recipient: issue.reportedBy,
         message: `A volunteer has accepted your issue: "${issue.title}". They are now working on it!`,
-      });
-
-      // Log activity
-      await logActivity({
-        type: "assigned",
-        userName: req.user.fullName || req.user.username || "Volunteer",
-        description: `accepted complaint "${issue.title}"`,
-        issueTitle: issue.title,
-        userId: req.user.id,
-        issueId: issue._id,
+        link: `/complaint/${issue._id}`, 
+        read: false
       });
 
       return res.status(200).json({ message: "Complaint accepted", issue: updated });
@@ -299,7 +288,7 @@ const respondToComplaint = async (req, res) => {
       const updated = await Issue.findByIdAndUpdate(
         id,
         { status: "Pending", assignedTo: null, progress: 0 },
-        { new: true }
+        { returnDocument: "after" } // Changed from { new: true }
       );
 
       // Log activity
@@ -323,32 +312,35 @@ const respondToComplaint = async (req, res) => {
 
 const updateStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, progress } = req.body; // Added progress as well
+  const { status } = req.body;
 
   try {
-    // Note: use 'Issue', not 'Complaint'
-    const issue = await Issue.findByIdAndUpdate(
-      id, 
-      { status, progress }, 
-      { new: true }
-    );
+    const progress = status === "Resolved" ? 100 : 10;
+    const updateData = { status, progress };
+    
+    if (status === "Resolved") {
+      updateData.resolvedAt = Date.now();
+    }
 
+    const issue = await Issue.findByIdAndUpdate(id, updateData, { returnDocument: "after" });
+    
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
-    // CREATE THE NOTIFICATION
-    await Notification.create({
-      recipient: issue.reportedBy, // Matches your 'reportedBy' field in Issue model
-      message: `Update: Your issue "${issue.title}" is now "${status}".`,
-    });
+    // Determine notification message and link based on status
+    let message = `Status Update: Your issue "${issue.title}" has been marked as ${status}.`;
+    let link = `/complaint/${issue._id}`;
 
-    // Log activity
-    await logActivity({
-      type: "status_change",
-      userName: "Admin",
-      description: `changed status of "${issue.title}" to ${status}`,
-      issueTitle: issue.title,
-      userId: req.user.id,
-      issueId: issue._id,
+    if (status === "Resolved") {
+      message = `Great news! Your issue "${issue.title}" is Resolved. Click here to rate the volunteer!`;
+      link = `/feedback?id=${issue._id}&title=${encodeURIComponent(issue.title)}`;
+    }
+
+    // Send exactly one notification
+    await Notification.create({
+      recipient: issue.reportedBy,
+      message,
+      link,
+      read: false
     });
 
     res.json(issue);

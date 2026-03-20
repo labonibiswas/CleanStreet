@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { BiChevronLeft, BiStar, BiDevices, BiCheckCircle, BiUpload, BiX, BiTask } from "react-icons/bi";
 import toast from "react-hot-toast";
 
@@ -8,7 +8,9 @@ const Feedback = () => {
   const location = useLocation();
   const fileInputRef = useRef(null);
 
-  const [step, setStep] = useState(1);
+  const [searchParams] = useSearchParams();
+  const complaintIdFromUrl = searchParams.get("id");
+  const complaintTitleFromUrl = searchParams.get("title");
   const [hover, setHover] = useState(0);
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState([]);
@@ -16,13 +18,19 @@ const Feedback = () => {
   const [complaintsList, setComplaintsList] = useState([]);
   const [loadingComplaints, setLoadingComplaints] = useState(false);
 
+  const initialCategory = location.state?.prefillCategory || (complaintIdFromUrl ? "Complaint Resolution" : "");
+  const initialStep = initialCategory ? 2 : 1;
+  const initialRef = location.state?.complaintId || complaintIdFromUrl || "";
+
+  const [step, setStep] = useState(initialStep);
+
   const [formData, setFormData] = useState({
-    category: "",
+    category: initialCategory,
     rating: 0, // This is for App Experience (Stars)
     comment: "",
     type: "Bug",
     platform: "Mobile App (iOS)",
-    complaintRef: "",
+    complaintRef: initialRef, // This will hold the complaint ID for "Complaint Resolution" feedback
     volunteerRating: 0, // NEW: Numeric rating for Volunteers
     resolutionSpeed: "Fast (1-2 Days)",
     workQuality: "Good",
@@ -51,28 +59,42 @@ const Feedback = () => {
     );
   };
 
+useEffect(() => {
+  // 1. Priority: URL params (from Notification click)
+  if (complaintIdFromUrl) {
+    setFormData(prev => ({
+      ...prev,
+      category: "Complaint Resolution",
+      complaintRef: complaintIdFromUrl,
+    }));
+    setStep(2);
+  } 
+  // 2. Secondary: Location State (from View Complaints button)
+  else if (location.state?.prefillCategory === "Complaint Resolution") {
+    setFormData(prev => ({
+      ...prev,
+      category: "Complaint Resolution",
+      complaintRef: location.state.complaintId || "",
+    }));
+    setStep(2);
+  }
+}, [complaintIdFromUrl, location.state]);
+  // NEW EFFECT: If we are pre-filling, we must also fetch the complaints list 
+  // so the form doesn't error out when submitting.
   useEffect(() => {
-    if (location.state?.prefillCategory === "Complaint Resolution") {
-      setFormData((prev) => ({
-        ...prev,
-        category: "Complaint Resolution",
-        complaintRef: location.state.complaintId || "",
-      }));
-      setStep(2);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    if (formData.category === "Complaint Resolution" && !location.state?.prefillCategory) {
+    if (formData.category === "Complaint Resolution") {
       const fetchComplaints = async () => {
         setLoadingComplaints(true);
         try {
           const token = localStorage.getItem("token");
           const res = await fetch("http://localhost:5000/api/issues", {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json();
-          const resolvedComplaints = Array.isArray(data) ? data.filter((c) => c.status === "Resolved") : [];
+          // Filter to only show 'Resolved' complaints
+          const resolvedComplaints = Array.isArray(data) 
+            ? data.filter(c => c.status === "Resolved") 
+            : [];
           setComplaintsList(resolvedComplaints);
         } catch (err) {
           toast.error("Could not load your complaints.");
@@ -82,7 +104,7 @@ const Feedback = () => {
       };
       fetchComplaints();
     }
-  }, [formData.category, location.state]);
+  }, [formData.category]);
 
   const selectCategory = (cat) => {
     setFormData({ ...formData, category: cat });
@@ -110,7 +132,6 @@ const Feedback = () => {
     try {
       let formattedMessage = "";
       if (formData.category === "Complaint Resolution") {
-        // MATCHES THE PARSER IN MYRATINGS
         formattedMessage = `[Complaint Ref: ${formData.complaintRef}] [Star Rating: ${formData.volunteerRating}/5] [Speed: ${formData.resolutionSpeed}] [Quality: ${formData.workQuality}] Details: ${formData.comment}`;
       } else {
         formattedMessage = `[Type: ${formData.type}] [Platform: ${formData.platform}] [Star Rating: ${formData.rating}/5] Details: ${formData.comment}`;
@@ -146,6 +167,7 @@ const Feedback = () => {
       setLoading(false);
     }
   };
+
 
   const inputClasses = "w-full bg-slate-50 border-2 border-slate-50 text-slate-700 p-3 rounded-xl font-medium outline-none focus:bg-white focus:border-indigo-200 transition-colors";
   const labelClasses = "text-xs font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1";
@@ -185,7 +207,7 @@ const Feedback = () => {
 
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-              <button onClick={() => location.state?.prefillCategory ? navigate(-1) : setStep(1)} className="flex items-center gap-1 text-slate-400 font-bold text-xs hover:text-indigo-600 mb-2 transition-colors">
+             <button onClick={() => { navigate('/feedback', { replace: true }); setStep(1); }} className="flex items-center gap-1 text-slate-400 font-bold text-xs hover:text-indigo-600 mb-2 transition-colors">
                 <BiChevronLeft size={18} /> {location.state?.prefillCategory ? "BACK TO COMPLAINTS" : "CHANGE CATEGORY"}
               </button>
 
@@ -226,10 +248,23 @@ const Feedback = () => {
                     <h3 className={sectionTitleClasses}>Resolution Details</h3>
                     <div>
                       <label className={labelClasses}>Select Complaint</label>
-                      {location.state?.prefillCategory ? (
-                        <input type="text" className={inputClasses} value={location.state.complaintTitle} readOnly />
+                      
+                      {/* If we have a Title from the URL or state, show a pretty read-only box */}
+                      {(complaintTitleFromUrl || location.state?.complaintTitle) ? (
+                        <div className="flex items-center justify-between bg-indigo-50 border-2 border-indigo-100 p-3 rounded-xl">
+                          <span className="text-indigo-900 font-bold text-sm">
+                             Reviewing: {complaintTitleFromUrl || location.state.complaintTitle}
+                          </span>
+                          <BiCheckCircle className="text-indigo-500" size={20} />
+                        </div>
                       ) : (
-                        <select required className={inputClasses} value={formData.complaintRef} onChange={(e) => setFormData({ ...formData, complaintRef: e.target.value })}>
+                        /* Otherwise show the standard dropdown */
+                        <select 
+                          required 
+                          className={inputClasses} 
+                          value={formData.complaintRef} 
+                          onChange={(e) => setFormData({ ...formData, complaintRef: e.target.value })}
+                        >
                           <option value="">-- Choose a resolved complaint --</option>
                           {loadingComplaints ? <option disabled>Loading...</option> : complaintsList.map((c) => (
                             <option key={c._id} value={c._id}>{c.title}</option>

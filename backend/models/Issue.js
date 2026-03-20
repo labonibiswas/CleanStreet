@@ -83,6 +83,11 @@ const issueSchema = new mongoose.Schema(
       default: null,
     },
 
+    resolvedAt: {
+      type: Date,
+      default: null,
+    },
+
   
 
   },

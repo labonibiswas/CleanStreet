@@ -221,7 +221,11 @@ useEffect(() => {
             notifications.map((n) => (
               <div
                 key={n._id}
-                onClick={() => markAsRead(n._id)}
+                onClick={() => {
+                  markAsRead(n._id);
+                  if (n.link) navigate(n.link); // Just go directly to the link
+                  setShowNotifs(false);         
+                }}
                 className={`p-4 border-b border-slate-50 cursor-pointer transition-colors ${
                   n.read ? "opacity-40" : "bg-indigo-50/30 hover:bg-indigo-50/50"
                 }`}

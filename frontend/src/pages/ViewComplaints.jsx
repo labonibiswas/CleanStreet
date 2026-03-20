@@ -40,6 +40,11 @@ const ViewComplaints = () => {
 
   useEffect(() => {
                   const fetchReports = async () => {
+                    if (!token || token === "undefined") {
+      setLoading(false);
+      setError("Please login to view complaints.");
+      return;
+    }
         try {
           setLoading(true);
           setError(null);
@@ -135,6 +140,29 @@ const ViewComplaints = () => {
       );
     } catch (err) {
       alert(err.message || "Error responding to complaint");
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const handleResolve = async (e, id) => {
+    e.stopPropagation();
+    setRespondingId(id);
+    try {
+      const res = await fetch(`http://localhost:5000/api/issues/${id}/status`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: "Resolved" })
+      });
+
+      if (res.ok) {
+        setReports(prev => prev.map(r => r._id === id ? { ...r, status: "Resolved" } : r));
+      }
+    } catch (err) {
+      alert("Failed to resolve issue");
     } finally {
       setRespondingId(null);
     }
@@ -463,7 +491,9 @@ const ViewComplaints = () => {
                  {/* VOLUNTEER ACTION PANEL */}
                   {isVolunteer && viewScope !== "Declined" && (() => {
                     const isPending = report.status === "Pending";
-                    const isAssignedToMe = report.assignedTo === currentUser?.id || report.assignedTo === currentUser?._id;
+                   const isAssignedToMe = 
+                        (report.assignedTo === currentUser?.id || report.assignedTo === currentUser?._id) || 
+                        (report.assignedTo?._id === currentUser?.id || report.assignedTo?._id === currentUser?._id);
                     const isInReview = report.status === "In Review";
 
                     if (isPending) {
@@ -490,27 +520,28 @@ const ViewComplaints = () => {
                       );
                     }
 
-                    if (isInReview && isAssignedToMe) {
+                   if (isInReview && isAssignedToMe) {
                       const isLoading = respondingId === report._id;
                       return (
-                        <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-indigo-50/80 to-blue-50/40 border border-indigo-200/60">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center">
-                                <HiCheckBadge size={15} className="text-white" />
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-bold text-indigo-700 leading-none">Assigned to you</p>
-                                <p className="text-[9px] text-indigo-400 mt-0.5">You are handling this complaint</p>
-                              </div>
-                            </div>
+                        <div className="mb-4 p-3 rounded-2xl bg-indigo-50 border border-indigo-100">
+                          <div className="flex flex-col gap-3">
                             <button
                               disabled={isLoading}
-                              onClick={(e) => handleRespond(e, report._id, "reject")}
-                              className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-red-500 bg-white border border-red-200/80 hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:pointer-events-none"
+                              onClick={(e) => handleResolve(e, report._id)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-all"
                             >
-                              {isLoading ? "..." : "Withdraw"}
+                              <HiCheckBadge size={16} /> Mark as Resolved
                             </button>
+                            
+                            <div className="flex justify-between px-1">
+                              <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Under Review (By You)</p>
+                              <button 
+                                onClick={(e) => handleRespond(e, report._id, "reject")}
+                                className="text-[10px] font-bold text-red-500 hover:underline"
+                              >
+                                Withdraw
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
