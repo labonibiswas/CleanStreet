@@ -315,18 +315,30 @@ const updateStatus = async (req, res) => {
   const { status } = req.body;
 
   try {
-    const progress = status === "Resolved" ? 100 : 10;
-    const updateData = { status, progress };
-    
-    if (status === "Resolved") {
-      updateData.resolvedAt = Date.now();
-    }
-
-    const issue = await Issue.findByIdAndUpdate(id, updateData, { returnDocument: "after" });
-    
+    // 1. Find the issue first to check ownership
+    const issue = await Issue.findById(id);
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
-    // Determine notification message and link based on status
+    // 2. SECURITY CHECK: Only allow the assigned volunteer (or an Admin) to resolve/update
+    if (req.user.role === "volunteer") {
+      if (!issue.assignedTo || issue.assignedTo.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ 
+          message: "Access Denied: You are not the assigned volunteer for this complaint." 
+        });
+      }
+    }
+
+    // 3. Apply the updates
+    issue.status = status;
+    issue.progress = status === "Resolved" ? 100 : 10;
+    
+    if (status === "Resolved") {
+      issue.resolvedAt = Date.now();
+    }
+
+    await issue.save();
+
+    // 4. Handle Notifications
     let message = `Status Update: Your issue "${issue.title}" has been marked as ${status}.`;
     let link = `/complaint/${issue._id}`;
 
@@ -335,7 +347,6 @@ const updateStatus = async (req, res) => {
       link = `/feedback?id=${issue._id}&title=${encodeURIComponent(issue.title)}`;
     }
 
-    // Send exactly one notification
     await Notification.create({
       recipient: issue.reportedBy,
       message,
@@ -345,6 +356,7 @@ const updateStatus = async (req, res) => {
 
     res.json(issue);
   } catch (error) {
+    console.error("UPDATE STATUS ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };

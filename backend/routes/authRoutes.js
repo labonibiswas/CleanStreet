@@ -10,5 +10,6 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.put("/change-password", protect, changePassword);
 router.put("/update-profile", protect, updateProfile);
+router.put("/change-password", protect, changePassword);
 
 module.exports = router;

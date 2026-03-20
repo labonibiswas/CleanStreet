@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const Notification = require("../models/Notification");
 
 const logActivity = async (data) => {
   try {
@@ -10,8 +10,6 @@ const logActivity = async (data) => {
   } catch { /* skip if Activity model not yet added */ }
 };
 
-
-// REGISTER
 exports.registerUser = async (req, res) => {
   try {
     const { fullName, username, email, phone, password, role, location } = req.body;
@@ -42,13 +40,33 @@ exports.registerUser = async (req, res) => {
       userId:      user._id,
     });
 
+    // ── Notify Admins ──
+    try {
+      // 1. Fetch the admins FIRST
+      const admins = await User.find({ role: "admin" });
+      
+      if (admins.length > 0) {
+        // 2. Map through them to create the notifications
+        const adminNotifications = admins.map(admin => ({
+          recipient: admin._id,
+          message: `New Registration: ${user.fullName || user.username} joined as a ${user.role || "citizen"}.`,
+          link: `/dashboard?tab=Manage Users`, // Automatically switches to the Manage Users tab
+          isRead: false // Uses your exact schema field
+        }));
+        
+        // 3. Save to database
+        await Notification.insertMany(adminNotifications);
+      }
+    } catch (notifErr) {
+      console.error("Failed to notify admins of new user:", notifErr);
+    }
+
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // LOGIN
 exports.loginUser = async (req, res) => {

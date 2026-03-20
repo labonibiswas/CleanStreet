@@ -223,7 +223,22 @@ useEffect(() => {
                 key={n._id}
                 onClick={() => {
                   markAsRead(n._id);
-                  if (n.link) navigate(n.link); // Just go directly to the link
+                  if (n.link) {
+                    // SAFETY NET: If it's a feedback link, extract the ID and force it via state
+                    if (n.link.includes("/feedback?id=")) {
+                      const urlParams = new URLSearchParams(n.link.split("?")[1]);
+                      navigate(n.link, {
+                        state: {
+                          prefillCategory: "Complaint Resolution",
+                          complaintId: urlParams.get("id"),
+                          complaintTitle: urlParams.get("title")
+                        }
+                      });
+                    } else {
+                      // Normal navigation for anything else
+                      navigate(n.link); 
+                    }
+                  }
                   setShowNotifs(false);         
                 }}
                 className={`p-4 border-b border-slate-50 cursor-pointer transition-colors ${

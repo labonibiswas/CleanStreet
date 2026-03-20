@@ -491,9 +491,9 @@ const ViewComplaints = () => {
                  {/* VOLUNTEER ACTION PANEL */}
                   {isVolunteer && viewScope !== "Declined" && (() => {
                     const isPending = report.status === "Pending";
-                   const isAssignedToMe = 
-                        (report.assignedTo === currentUser?.id || report.assignedTo === currentUser?._id) || 
-                        (report.assignedTo?._id === currentUser?.id || report.assignedTo?._id === currentUser?._id);
+                    const assignedId = typeof report.assignedTo === 'object' ? report.assignedTo?._id : report.assignedTo;
+                    const myId = currentUser?.id || currentUser?._id;
+                    const isAssignedToMe = Boolean(assignedId && myId && String(assignedId) === String(myId));
                     const isInReview = report.status === "In Review";
 
                     if (isPending) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Download, Users, FileText, Clock, CheckCircle,
@@ -172,13 +173,17 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading=false, conf
 
 /* ════════════════════════════════════════════════════════════════ */
 export default function AdminPanel() {
-  const [tab, setTab]       = useState('Overview');
+  const location = useLocation();
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    const urlTab = params.get("tab");
+    return urlTab ? urlTab : 'Overview';
+  });
   const [loading, setLd]    = useState(true);
   const [error, setErr]     = useState(null);
   const [showDl, setShowDl] = useState(false);
   const [dlLd, setDlLd]     = useState(null);
 
-  /* stats */
   const [stats, setStats]     = useState(null);
   const [roles, setRoles]     = useState(null);
   const [types, setTypes]     = useState([]);
@@ -226,14 +231,13 @@ export default function AdminPanel() {
   /* activities */
   const [acts, setActs]       = useState([]);
   const [actsLd, setActsLd]   = useState(false);
-  const [actFilter, setActFilter] = useState('All');    // All | Admin | Volunteer | User
-  const [actTypeF, setActTypeF]   = useState('All');    // filter by activity type
+  const [actFilter, setActFilter] = useState('All'); 
+  const [actTypeF, setActTypeF]   = useState('All'); 
   const [actSearch, setActSearch] = useState('');
 
   const token = localStorage.getItem('token');
   const H = { Authorization: `Bearer ${token}` };
 
-  /* ── Load dashboard stats ── */
   useEffect(() => {
     (async () => {
       try {
@@ -943,6 +947,7 @@ export default function AdminPanel() {
     );
   };
 
+/* ══════════════ RECENT ACTIVITIES (Admin Only) ══════════════ */
   const RecentActivities = (
     <div className="adm-fu flex flex-col gap-4">
       {/* ── Header + Search only ── */}
@@ -950,7 +955,7 @@ export default function AdminPanel() {
         <div>
           <h2 className="text-base font-extrabold text-slate-800 m-0">Recent Activities</h2>
           <p className="text-xs text-slate-400 mt-[3px] mb-0 font-medium">
-            {acts.length} total entries — grouped by role
+            {adminActs.length} total admin actions
           </p>
         </div>
         <div className="relative">
@@ -960,12 +965,10 @@ export default function AdminPanel() {
       </div>
 
       {/* ── Summary stats strip ── */}
-      {!actsLd && acts.length>0 && (
-        <div className="grid grid-cols-3 gap-3">
+      {!actsLd && adminActs.length>0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            {label:'Admin Actions',     count:adminActs.length,     ...groupColors.Admin},
-            {label:'Volunteer Actions', count:volunteerActs.length, ...groupColors.Volunteer},
-            {label:'User Actions',      count:userActs.length,      ...groupColors.User},
+            {label:'Admin Actions', count:adminActs.length, ...groupColors.Admin},
           ].map((s,i)=>(
             <div key={i} className="bg-white rounded-[14px] border border-slate-100 px-4 py-3 flex items-center gap-3">
               <div className={`w-2 h-8 rounded-full ${s.bar} shrink-0`}/>
@@ -981,14 +984,10 @@ export default function AdminPanel() {
       {/* ── Activity sections ── */}
       {actsLd ? (
         <Card><TableSpin/></Card>
-      ) : acts.length===0 ? (
-        <Card><Empty msg="No recent activities found." icon={<Bell size={22} strokeWidth={1.4} color="#CBD5E1"/>}/></Card>
+      ) : adminActs.length===0 ? (
+        <Card><Empty msg="No recent admin activities found." icon={<Bell size={22} strokeWidth={1.4} color="#CBD5E1"/>}/></Card>
       ) : (
-        <>
-          <ActivitySection label="Admin Actions"     items={adminActs}     color="Admin"/>
-          <ActivitySection label="Volunteer Actions" items={volunteerActs} color="Volunteer"/>
-          <ActivitySection label="User Actions"      items={userActs}      color="User"/>
-        </>
+        <ActivitySection label="Admin Actions" items={adminActs} color="Admin"/>
       )}
     </div>
   );

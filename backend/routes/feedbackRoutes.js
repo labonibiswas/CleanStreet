@@ -7,6 +7,7 @@ const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../config/cloudinary"); // Adjust path if your config is elsewhere
 const Issue = require("../models/Issue");
+const User = require("../models/User");
 
 // Configure Cloudinary Storage specifically for Feedback
 const storage = new CloudinaryStorage({
@@ -31,14 +32,14 @@ router.get("/admin", protect, async (req, res) => {
   }
 });
 
-// 2. POST NEW FEEDBACK (Direct Cloudinary Streaming + Volunteer Linking + Detailed Notifications)
+// 2. POST NEW FEEDBACK (Direct Cloudinary Streaming + Volunteer Linking + Admin Alerts)
 router.post("/", protect, upload.array("images", 3), async (req, res) => {
   try {
     const { message, category, complaintId } = req.body;
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
     let targetVolunteerId = null;
 
-if (category === "Complaint Resolution" && complaintId) {
+    if (category === "Complaint Resolution" && complaintId) {
       const issue = await Issue.findById(complaintId);
       
       if (issue && issue.assignedTo) {
@@ -49,9 +50,8 @@ if (category === "Complaint Resolution" && complaintId) {
 
         await Notification.create({
           recipient: targetVolunteerId,
-          // Updated message to include issue title
           message: `Feedback for "${issue.title}": Rated ${volunteerRating} (${quality} quality).`,
-          link: "/my-ratings", // Link them to their new ratings page
+          link: "/my-ratings", 
           read: false
         });
       }
@@ -68,6 +68,25 @@ if (category === "Complaint Resolution" && complaintId) {
     });
 
     const savedFeedback = await feedback.save();
+
+    // --- NEW: NOTIFY ALL ADMINS ---
+    try {
+      const admins = await User.find({ role: "admin" });
+      if (admins.length > 0) {
+        const reporterName = req.user?.username || "A user";
+        const adminAlerts = admins.map(admin => ({
+          recipient: admin._id,
+          message: `New ${category} feedback received from ${reporterName}.`,
+          link: "/admin-feedback", 
+          read: false // Matching the schema you used above
+        }));
+        await Notification.insertMany(adminAlerts);
+      }
+    } catch (notifErr) {
+      console.error("Failed to notify admins of new feedback:", notifErr);
+    }
+    // ------------------------------
+
     res.status(201).json(savedFeedback);
   } catch (err) {
     console.error("Feedback Upload Error:", err);
