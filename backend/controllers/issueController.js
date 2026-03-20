@@ -216,7 +216,7 @@ const getNearbyComplaints = async (req, res) => {
       location: {
         $near: {
           $geometry: { type: "Point", coordinates: user.location.coordinates },
-          $maxDistance: 20000,
+          $maxDistance: 5000000,
         },
       },
     })
