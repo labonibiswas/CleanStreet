@@ -6,8 +6,26 @@ import {
   BiUserCircle, 
   BiTimeFive,
   BiMessageSquareDetail,
-  BiFilterAlt
+  BiFilterAlt,
+  BiImage // <-- NEW ICON
 } from "react-icons/bi";
+
+// <-- NEW HELPER FUNCTION (Add this right above your component) -->
+const parseMessage = (rawStr) => {
+  const tags = [];
+  const regex = /\[(.*?)\]/g;
+  let match;
+  
+  // Extract all data inside brackets
+  while ((match = regex.exec(rawStr)) !== null) {
+    tags.push(match[1]);
+  }
+  
+  // Remove brackets and "Details: " to get the clean comment
+  const cleanText = rawStr.replace(/\[.*?\]/g, '').replace(/Details:\s*/i, '').trim();
+  
+  return { tags, cleanText };
+};
 
 const AdminFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -140,18 +158,23 @@ const AdminFeedback = () => {
           </div>
           
           <select 
-            className="w-full sm:w-auto bg-slate-50 border-none text-slate-700 font-bold text-xs py-2 px-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="Issue Related">Cleanup Issues</option>
-            <option value="App Experience">App Experience</option>
-          </select>
-        </div>
+              className="w-full sm:w-64 bg-slate-50 border border-slate-200 text-slate-700 font-bold text-[13px] py-2.5 px-4 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all cursor-pointer"
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              <option value="Complaint Resolution">Complaint Resolution</option>
+              <option value="App Experience">App Experience</option>
+            </select>
+          </div>
 
-        {/* Feedback List */}
+      {/* Feedback List */}
         <div className="space-y-4">
-          {filteredFeedbacks.map((fb) => (
+          {filteredFeedbacks.map((fb) => {
+            // <-- NEW PARSING LOGIC -->
+            const { tags, cleanText } = parseMessage(fb.message);
+            const hasImages = fb.images && fb.images.length > 0;
+
+            return (
             <div key={fb._id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 animate-in fade-in duration-300">
               
               {/* Card Header */}
@@ -167,17 +190,54 @@ const AdminFeedback = () => {
                     </p>
                   </div>
                 </div>
-                <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider ${
-                  fb.category === "Issue Related" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+                <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider border ${
+                  fb.category === "Complaint Resolution" ? "bg-red-100 text-red-700 border-red-200 shadow-sm" : 
+                  "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
                 }`}>
                   {fb.category}
                 </span>
               </div>
               
-              {/* Feedback Body */}
-              <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-100">
-                <p className="text-slate-700 text-sm font-medium">"{fb.message}"</p>
+              {/* Feedback Body (Refined) */}
+              <div className="bg-slate-50/50 rounded-2xl p-5 mb-6 border border-slate-100">
+                
+                {/* Render the extracted tags as nice badges */}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-slate-200/60">
+                    {tags.map((tag, i) => {
+                      if (tag.toLowerCase().includes("attachments")) return null; // Hide the raw attachment tag
+                      return (
+                        <div key={i} className="bg-white border border-slate-200 text-slate-600 text-[11px] font-bold px-2.5 py-1.5 rounded-md shadow-sm">
+                          {tag}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Render just the clean comment text */}
+                <p className="text-slate-800 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+                  {cleanText || <span className="text-slate-400 italic">No additional comments provided.</span>}
+                </p>
+
+                {/* Render the Cloudinary images if they exist */}
+                {hasImages && (
+                  <div className="mt-5 pt-4 border-t border-slate-200/60">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+                      <BiImage size={14} /> Attached Photos
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {fb.images.map((imgUrl, idx) => (
+                        <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-xl border border-slate-200 bg-slate-100 aspect-video sm:aspect-square">
+                          <img src={imgUrl} alt="Attachment" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Action Area */}
 
               {/* Action Area */}
               {fb.adminReply ? (
@@ -229,7 +289,8 @@ const AdminFeedback = () => {
               )}
 
             </div>
-          ))}
+            );
+          })}
           
           {filteredFeedbacks.length === 0 && (
             <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">

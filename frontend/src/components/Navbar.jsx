@@ -146,6 +146,20 @@ useEffect(() => {
     Manage Feedback
   </NavLink>
 )}
+
+{/* Volunteer Specific Link - Desktop */}
+{user?.role === "volunteer" && (
+  <NavLink
+    to="/my-ratings"
+    className={({ isActive }) =>
+      `px-4 py-2 rounded-full text-sm font-medium transition ${
+        isActive ? desktopActive : desktopInactive
+      }`
+    }
+  >
+    My Ratings
+  </NavLink>
+)}
         </div>
 
 <div className="flex items-center gap-3 notification-container">
@@ -341,6 +355,21 @@ useEffect(() => {
               }
             >
               Admin Panel
+            </NavLink>
+          )}
+
+          {/* Volunteer Specific Link - Mobile */}
+          {user?.role === "volunteer" && (
+            <NavLink
+              to="/my-ratings"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg ${
+                  isActive ? mobileActive : mobileInactive
+                }`
+              }
+            >
+              My Ratings
             </NavLink>
           )}
 

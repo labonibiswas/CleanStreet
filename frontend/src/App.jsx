@@ -19,15 +19,15 @@ import ReportIssue from "./pages/ReportIssue";
 import ComplaintDetails from "./pages/ComplaintDetails";
 import ViewComplaints from "./pages/ViewComplaints";
 import EditComplaint from "./pages/EditComplaint";
+import MyRatings from "./pages/MyRatings";
 
 function App() {
-  // 1. Make role a React state so it can update dynamically
+
   const [role, setRole] = useState(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     return user?.role;
   });
 
-  // 2. Tell App to listen for the exact moment the user logs in or out
   useEffect(() => {
     const syncRole = () => {
       const user = JSON.parse(localStorage.getItem("user"));
@@ -85,6 +85,8 @@ function App() {
           <Route path="/feedback" element={<FeedbackForm />} />
 
           <Route path="/admin-feedback" element={<AdminFeedback />} />
+
+          <Route path="/my-ratings" element={<MyRatings />} />
 
         </Routes>
 

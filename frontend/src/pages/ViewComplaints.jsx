@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { BiUpvote, BiDownvote, BiComment, BiSearch, BiFilterAlt, BiUser, BiSort } from "react-icons/bi";
+import { BiUpvote, BiDownvote, BiComment, BiSearch, BiFilterAlt, BiUser, BiSort, BiMessageSquareDetail } from "react-icons/bi";
 import { HiOutlineShieldCheck, HiOutlineXMark, HiCheckBadge, HiOutlineExclamationTriangle, HiOutlineArrowUturnLeft } from "react-icons/hi2";
 
 const DEFAULT_IMAGE =
@@ -460,7 +460,7 @@ const ViewComplaints = () => {
                     </div>
                   )}
 
-                  {/* VOLUNTEER ACTION PANEL */}
+                 {/* VOLUNTEER ACTION PANEL */}
                   {isVolunteer && viewScope !== "Declined" && (() => {
                     const isPending = report.status === "Pending";
                     const isAssignedToMe = report.assignedTo === currentUser?.id || report.assignedTo === currentUser?._id;
@@ -556,7 +556,29 @@ const ViewComplaints = () => {
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Details →</span>
+                    <div className="flex items-center gap-3">
+                      {/* CONDITIONAL FEEDBACK BUTTON FOR RESOLVED ISSUES */}
+                      {report.status === "Resolved" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/feedback', {
+                              state: {
+                                prefillCategory: "Complaint Resolution",
+                                complaintId: report._id,
+                                complaintTitle: report.title,
+                              }
+                            });
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                        >
+                          <BiMessageSquareDetail size={12} />
+                          <span className="text-[10px] font-bold uppercase tracking-wide">Feedback</span>
+                        </button>
+                      )}
+
+                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Details →</span>
+                    </div>
                   </div>
                 </div>
               </div>
